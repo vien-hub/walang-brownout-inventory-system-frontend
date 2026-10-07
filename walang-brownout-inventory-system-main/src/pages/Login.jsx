@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Mail, Lock, Eye, EyeOff, LogIn, UserPlus, User, AlertCircle, CheckCircle2, Shield, Package, TrendingUp } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, User, AlertCircle, CheckCircle2, Shield, Package, TrendingUp } from 'lucide-react';
 import api from '../api/axios';
 import { hydrateFromServer, startSession } from '../api/sync';
 
@@ -84,11 +84,8 @@ export default function Login() {
         <div className="absolute -top-24 -right-24 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute -bottom-32 -left-20 h-96 w-96 rounded-full bg-indigo-400/20 blur-3xl" />
 
-        <div className="relative flex items-center gap-3">
-          <div className="p-2.5 bg-white/15 backdrop-blur-md rounded-2xl border border-white/25">
-            <Zap className="w-6 h-6 fill-white" />
-          </div>
-          <span className="text-xl font-extrabold tracking-tight">WalangBrownout</span>
+        <div className="relative inline-flex self-start rounded-3xl bg-white/95 px-5 py-3 shadow-2xl shadow-sky-950/30">
+          <img src="/logo.png" alt="WalangBrownout Inventory System" className="h-14 w-auto" />
         </div>
 
         <div className="relative space-y-8 max-w-md">
@@ -122,11 +119,8 @@ export default function Login() {
       {/* Form panel */}
       <main className="flex items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-md space-y-7">
-          <div className="lg:hidden flex items-center gap-3">
-            <div className="p-2.5 bg-linear-to-br from-sky-500 to-indigo-600 text-white rounded-2xl shadow-md shadow-sky-500/30">
-              <Zap className="w-5 h-5 fill-white" />
-            </div>
-            <span className="text-lg font-extrabold tracking-tight">WalangBrownout</span>
+          <div className="lg:hidden">
+            <img src="/logo.png" alt="WalangBrownout Inventory System" className="h-14 w-auto" />
           </div>
 
           <div>
