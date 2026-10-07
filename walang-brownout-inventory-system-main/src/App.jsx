@@ -1,22 +1,16 @@
 import { useEffect, useState } from 'react';
-import api from './api/axios';
+import api from "./api/axios";
 
 function App() {
-  const [status, setStatus] = useState('Connecting to backend...');
+  const [msg, setMsg] = useState('Connecting...');
 
   useEffect(() => {
     api.get('/test-connection')
-      .then((res) => setStatus(res.data.message))
-      .catch((err) => {
-        console.error('Connection error:', err);
-        setStatus('Failed to connect to backend.');
-      });
+      .then((res) => setMsg(res.data.message))
+      .catch((err) => setMsg('Failed: ' + err.message));
   }, []);
 
-  return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h1>Inventory Management System</h1>
-      <p>Backend Connection Status: <strong>{status}</strong></p>
-    </div>
-  );
+  return <h1>{msg}</h1>;
 }
+
+export default App;
