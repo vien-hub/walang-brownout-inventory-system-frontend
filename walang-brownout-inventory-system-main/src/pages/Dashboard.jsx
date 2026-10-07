@@ -2,305 +2,319 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header.jsx';
 import Navbar from '../components/Navbar.jsx';
-import { 
-  Package, AlertTriangle, ShieldAlert, Clock, 
-  TrendingUp, ArrowRight 
-} from 'lucide-react';
+import { Package, AlertTriangle, ShieldAlert, Clock, TrendingUp, ArrowRight } from 'lucide-react';
+
+const defaultInventory = [
+  { sku: 'SKU-8821', name: 'Inverter Generator 3kVA', onHand: 18, status: 'In Stock' },
+  { sku: 'SKU-4102', name: 'Solar Charge Controller 60A', onHand: 3, status: 'Low Stock' },
+  { sku: 'SKU-9011', name: 'LiFePO4 100Ah Battery Pack', onHand: 0, status: 'Out of Stock' },
+  { sku: 'SKU-1044', name: 'Automatic Transfer Switch 100A', onHand: 25, status: 'In Stock' },
+  { sku: 'SKU-3092', name: 'Monocrystalline Solar Panel 450W', onHand: 42, status: 'In Stock' },
+  { sku: 'SKU-5201', name: 'Deep Cycle Gel Battery 200Ah', onHand: 5, status: 'Low Stock' },
+];
+
+const defaultAlerts = [
+  { id: 'ALT-1004', type: 'Out of Stock', item: 'LiFePO4 100Ah Battery Pack', sku: 'SKU-9011', details: 'Out of Stock • SKU-9011', priority: 'Critical', status: 'Active' },
+  { id: 'ALT-1005', type: 'Low Stock', item: 'Solar Charge Controller 60A', sku: 'SKU-4102', details: 'Low Stock (2 left) • SKU-4102', priority: 'Warning', status: 'Active' },
+  { id: 'ALT-1006', type: 'Low Stock', item: 'Deep Cycle Gel Battery 200Ah', sku: 'SKU-5201', details: 'Low Stock (4 left) • SKU-5201', priority: 'Warning', status: 'Active' },
+  { id: 'ALT-1007', type: 'Reorder Pending', item: 'Automatic Transfer Switch 100A', sku: 'SKU-1044', details: 'Reorder Pending • SKU-1044', priority: 'Pending', status: 'Active' },
+];
+
+const salesData = [
+  { month: 'Jan', value: 35 },
+  { month: 'Feb', value: 45 },
+  { month: 'Mar', value: 75 },
+  { month: 'Apr', value: 90 },
+  { month: 'May', value: 98 },
+  { month: 'Jun', value: 65 },
+  { month: 'Jul', value: 55 },
+  { month: 'Aug', value: 100 },
+];
+
+const tones = {
+  sky: { tile: 'bg-linear-to-br from-sky-500 to-sky-600 shadow-sky-500/30', value: 'text-slate-900', hint: 'text-sky-700 bg-sky-50' },
+  amber: { tile: 'bg-linear-to-br from-amber-400 to-orange-500 shadow-amber-500/30', value: 'text-amber-600', hint: 'text-amber-700 bg-amber-50' },
+  rose: { tile: 'bg-linear-to-br from-rose-500 to-pink-600 shadow-rose-500/30', value: 'text-rose-600', hint: 'text-rose-700 bg-rose-50' },
+  indigo: { tile: 'bg-linear-to-br from-indigo-500 to-violet-600 shadow-indigo-500/30', value: 'text-slate-900', hint: 'text-indigo-700 bg-indigo-50' },
+};
+
+function KpiCard({ label, value, hint, icon: Icon, tone }) {
+  const t = tones[tone];
+  return (
+    <div className="group relative overflow-hidden rounded-3xl bg-white/90 backdrop-blur border border-slate-200/70 p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{label}</p>
+          <p className={`mt-2 text-4xl font-extrabold tracking-tight ${t.value}`}>{value}</p>
+        </div>
+        <div className={`p-3 rounded-2xl text-white shadow-lg ${t.tile}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+      </div>
+      <span className={`mt-4 inline-block rounded-full px-2.5 py-1 text-[11px] font-bold ${t.hint}`}>{hint}</span>
+    </div>
+  );
+}
+
+// Turn points into a smooth curved line
+function smoothPath(points) {
+  if (points.length < 2) return '';
+  let d = `M ${points[0].x},${points[0].y}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] || points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] || p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y}`;
+  }
+  return d;
+}
+
+function SalesChart() {
+  const [hover, setHover] = useState(null);
+  const W = 560, H = 260, left = 40, right = 20, top = 20, bottom = 36;
+  const min = 20, max = 100;
+  const xStep = (W - left - right) / (salesData.length - 1);
+  const yFor = (v) => top + (1 - (v - min) / (max - min)) * (H - top - bottom);
+  const pts = salesData.map((d, i) => ({ x: left + i * xStep, y: yFor(d.value), ...d }));
+  const line = smoothPath(pts);
+  const area = `${line} L ${pts[pts.length - 1].x},${H - bottom} L ${pts[0].x},${H - bottom} Z`;
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto overflow-visible">
+      <defs>
+        <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+        </linearGradient>
+        <linearGradient id="salesLine" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#0ea5e9" />
+          <stop offset="100%" stopColor="#6366f1" />
+        </linearGradient>
+      </defs>
+
+      {[20, 40, 60, 80, 100].map((g) => (
+        <g key={g}>
+          <line x1={left} x2={W - right} y1={yFor(g)} y2={yFor(g)} stroke="#e2e8f0" strokeDasharray="4 6" />
+          <text x={left - 10} y={yFor(g) + 4} textAnchor="end" className="fill-slate-400" fontSize="11" fontWeight="600">{g}k</text>
+        </g>
+      ))}
+
+      <path d={area} fill="url(#salesFill)" />
+      <path d={line} fill="none" stroke="url(#salesLine)" strokeWidth="4" strokeLinecap="round" />
+
+      {pts.map((p, i) => (
+        <g key={p.month} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}>
+          <rect x={p.x - xStep / 2} y={top} width={xStep} height={H - top - bottom} fill="transparent" />
+          <circle cx={p.x} cy={p.y} r={hover === i ? 7 : 5} fill="#fff" stroke="#0ea5e9" strokeWidth="3" />
+          <text x={p.x} y={H - 12} textAnchor="middle" className="fill-slate-500" fontSize="12" fontWeight="600">{p.month}</text>
+          {hover === i && (
+            <g>
+              <rect x={p.x - 28} y={p.y - 38} width="56" height="24" rx="8" fill="#0f172a" />
+              <text x={p.x} y={p.y - 22} textAnchor="middle" fill="#fff" fontSize="12" fontWeight="700">{p.value}k</text>
+            </g>
+          )}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+const priorityStyle = {
+  Critical: 'bg-rose-50 text-rose-700 ring-rose-200',
+  Warning: 'bg-amber-50 text-amber-700 ring-amber-200',
+  Pending: 'bg-sky-50 text-sky-700 ring-sky-200',
+};
+
+const dotStyle = {
+  Critical: 'bg-rose-500',
+  Warning: 'bg-amber-500',
+  Pending: 'bg-sky-500',
+};
 
 export default function Dashboard() {
   const [isNavOpen, setIsNavOpen] = useState(false);
-
-  // Dynamic Inventory State
-  const defaultInventory = [
-    { sku: 'SKU-8821', name: 'Inverter Generator 3kVA', onHand: 18, status: 'In Stock' },
-    { sku: 'SKU-4102', name: 'Solar Charge Controller 60A', onHand: 3, status: 'Low Stock' },
-    { sku: 'SKU-9011', name: 'LiFePO4 100Ah Battery Pack', onHand: 0, status: 'Out of Stock' },
-    { sku: 'SKU-1044', name: 'Automatic Transfer Switch 100A', onHand: 25, status: 'In Stock' },
-    { sku: 'SKU-3092', name: 'Monocrystalline Solar Panel 450W', onHand: 42, status: 'In Stock' },
-    { sku: 'SKU-5201', name: 'Deep Cycle Gel Battery 200Ah', onHand: 5, status: 'Low Stock' },
-  ];
 
   const [inventory, setInventory] = useState(() => {
     const saved = localStorage.getItem('inventory_db');
     return saved ? JSON.parse(saved) : defaultInventory;
   });
 
-  // Dynamic Alerts State
-  const defaultAlerts = [
-    { id: 'ALT-1004', type: 'Out of Stock', item: 'LiFePO4 100Ah Battery Pack', sku: 'SKU-9011', details: 'Out of Stock • SKU-9011', priority: 'Critical', status: 'Active' },
-    { id: 'ALT-1005', type: 'Low Stock', item: 'Solar Charge Controller 60A', sku: 'SKU-4102', details: 'Low Stock (2 left) • SKU-4102', priority: 'Warning', status: 'Active' },
-    { id: 'ALT-1006', type: 'Low Stock', item: 'Deep Cycle Gel Battery 200Ah', sku: 'SKU-5201', details: 'Low Stock (4 left) • SKU-5201', priority: 'Warning', status: 'Active' },
-    { id: 'ALT-1007', type: 'Reorder Pending', item: 'Automatic Transfer Switch 100A', sku: 'SKU-1044', details: 'Reorder Pending • SKU-1044', priority: 'Pending', status: 'Active' },
-  ];
-
   const [alerts, setAlerts] = useState(() => {
     const saved = localStorage.getItem('alerts_db');
     return saved ? JSON.parse(saved) : defaultAlerts;
   });
 
-  // Synchronize with LocalStorage across user actions
+  const [firstName] = useState(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem('current_user'));
+      return user?.name ? user.name.trim().split(' ')[0] : 'there';
+    } catch {
+      return 'there';
+    }
+  });
+
+  // Refresh when other pages change the data
   useEffect(() => {
     const syncDatabase = () => {
       const savedInv = localStorage.getItem('inventory_db');
       if (savedInv) setInventory(JSON.parse(savedInv));
-
       const savedAlerts = localStorage.getItem('alerts_db');
       if (savedAlerts) setAlerts(JSON.parse(savedAlerts));
     };
-
     window.addEventListener('storage', syncDatabase);
     window.addEventListener('focus', syncDatabase);
-
     return () => {
       window.removeEventListener('storage', syncDatabase);
       window.removeEventListener('focus', syncDatabase);
     };
   }, []);
 
-  // Filter Active Alerts (Excludes Resolved)
-  const activeAlertsList = useMemo(() => {
-    return alerts.filter(a => a.status !== 'Resolved');
-  }, [alerts]);
+  const activeAlertsList = useMemo(() => alerts.filter((a) => a.status !== 'Resolved'), [alerts]);
 
-  // Dynamic KPI Metric Calculations Linked Strictly to Active System Alerts & Inventory
   const kpiStats = useMemo(() => {
-    // 1. Total Products Count
-    const totalProducts = inventory.length;
-
-    // 2. Low Stock Count (Calculated ONLY from unresolved low stock alerts or active inventory drops)
-    const lowStockCount = alerts.filter(a => 
-      a.status !== 'Resolved' && (
-        a.type === 'Low Stock' || 
-        a.priority === 'Warning' || 
-        a.details.toLowerCase().includes('low stock')
-      )
-    ).length;
-
-    // 3. Out of Stock Count (Calculated ONLY from unresolved out-of-stock alerts)
-    const outOfStockCount = alerts.filter(a => 
-      a.status !== 'Resolved' && (
-        a.type === 'Out of Stock' || 
-        a.priority === 'Critical' || 
-        a.details.toLowerCase().includes('out of stock')
-      )
-    ).length;
-
-    // 4. Expiring Items Count (Strictly active unresolved expiring alerts)
-    const expiringCount = alerts.filter(a => 
-      a.status !== 'Resolved' && (
-        a.type === 'Expiring Soon' || 
-        a.details.toLowerCase().includes('expire')
-      )
-    ).length;
-
-    return { totalProducts, lowStockCount, outOfStockCount, expiringCount };
+    const active = alerts.filter((a) => a.status !== 'Resolved');
+    const text = (a) => (a.details || '').toLowerCase();
+    return {
+      totalProducts: inventory.length,
+      lowStockCount: active.filter((a) => a.type === 'Low Stock' || a.priority === 'Warning' || text(a).includes('low stock')).length,
+      outOfStockCount: active.filter((a) => a.type === 'Out of Stock' || a.priority === 'Critical' || text(a).includes('out of stock')).length,
+      expiringCount: active.filter((a) => a.type === 'Expiring Soon' || text(a).includes('expire')).length,
+    };
   }, [inventory, alerts]);
 
-  const getPriorityBadge = (priority) => {
-    switch (priority) {
-      case 'Critical': return 'bg-rose-50 text-rose-800 border-rose-300';
-      case 'Warning': return 'bg-amber-50 text-amber-800 border-amber-300';
-      case 'Pending': return 'bg-sky-50 text-sky-800 border-sky-300';
-      default: return 'bg-slate-100 text-slate-700 border-slate-200';
-    }
-  };
+  const stockHealth = useMemo(() => {
+    const total = inventory.length || 1;
+    const out = inventory.filter((i) => i.status === 'Out of Stock').length;
+    const low = inventory.filter((i) => i.status === 'Low Stock').length;
+    const good = Math.max(inventory.length - out - low, 0);
+    return {
+      good, low, out,
+      goodPct: Math.round((good / total) * 100),
+      lowPct: Math.round((low / total) * 100),
+      outPct: Math.round((out / total) * 100),
+    };
+  }, [inventory]);
 
-  const points = [
-    { month: 'Jan', val: '35k', cx: 30, cy: 170 },
-    { month: 'Feb', val: '45k', cx: 90, cy: 150 },
-    { month: 'Mar', val: '75k', cx: 150, cy: 90 },
-    { month: 'Apr', val: '90k', cx: 210, cy: 60 },
-    { month: 'May', val: '98k', cx: 270, cy: 40 },
-    { month: 'Jun', val: '65k', cx: 330, cy: 110 },
-    { month: 'Jul', val: '55k', cx: 390, cy: 130 },
-    { month: 'Aug', val: '100k', cx: 480, cy: 30 },
-  ];
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
   return (
     <div className="bg-slate-100 text-slate-900 font-sans antialiased min-h-screen flex flex-col overflow-x-hidden w-full">
       <Navbar isOpen={isNavOpen} onClose={() => setIsNavOpen(false)} />
       <Header title="Dashboard" onMenuOpen={() => setIsNavOpen(true)} />
 
-      <main className="w-full max-w-full px-4 sm:px-6 lg:px-10 py-6 space-y-6 flex-1">
-        
-        {/* Header */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">System Overview</h1>
-          <p className="text-xs font-semibold text-slate-600 mt-0.5">Real-time inventory stock monitoring & demand analytics</p>
-        </div>
-
-        {/* Dynamic 4 KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          
-          {/* TOTAL PRODUCTS */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex items-start justify-between">
+      <main className="w-full max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-10 py-6 space-y-6 flex-1">
+        {/* Hero */}
+        <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-sky-600 via-sky-600 to-indigo-600 p-6 sm:p-8 text-white shadow-xl shadow-sky-600/20">
+          <div className="absolute -right-10 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+          <div className="absolute right-28 -bottom-24 h-52 w-52 rounded-full bg-indigo-300/25 blur-2xl" />
+          <div className="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5">
             <div>
-              <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider">TOTAL PRODUCTS</p>
-              <h2 className="text-2xl font-black text-slate-900 mt-2">{kpiStats.totalProducts}</h2>
-              <p className="text-[11px] font-bold text-sky-700 mt-0.5">Active SKUs Cataloged</p>
+              <p className="text-xs font-semibold text-sky-100">{today}</p>
+              <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight">Welcome back, {firstName}</h1>
+              <p className="mt-1.5 text-sm text-sky-100">Real-time inventory stock monitoring & demand analytics</p>
             </div>
-            <div className="p-2.5 bg-sky-50 rounded-xl text-sky-700 border border-sky-200">
-              <Package className="w-5 h-5" />
-            </div>
-          </div>
-
-          {/* LOW STOCK ALERT */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex items-start justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider">LOW STOCK ALERT</p>
-              <h2 className="text-2xl font-black text-amber-700 mt-2">{kpiStats.lowStockCount}</h2>
-              <p className="text-[11px] font-bold text-amber-800 mt-0.5">Below minimum safety level</p>
-            </div>
-            <div className="p-2.5 bg-amber-50 rounded-xl text-amber-700 border border-amber-200">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-          </div>
-
-          {/* OUT OF STOCK */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex items-start justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider">OUT OF STOCK</p>
-              <h2 className="text-2xl font-black text-rose-700 mt-2">{kpiStats.outOfStockCount}</h2>
-              <p className="text-[11px] font-bold text-rose-800 mt-0.5">Urgent replenishment required</p>
-            </div>
-            <div className="p-2.5 bg-rose-50 rounded-xl text-rose-700 border border-rose-200">
-              <ShieldAlert className="w-5 h-5" />
-            </div>
-          </div>
-
-          {/* EXPIRING ITEMS */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex items-start justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider">EXPIRING ITEMS</p>
-              <h2 className="text-2xl font-black text-sky-800 mt-2">{kpiStats.expiringCount}</h2>
-              <p className="text-[11px] font-bold text-sky-800 mt-0.5">Warranty limits near expiry</p>
-            </div>
-            <div className="p-2.5 bg-sky-50 rounded-xl text-sky-700 border border-sky-200">
-              <Clock className="w-5 h-5" />
-            </div>
-          </div>
-
-        </div>
-
-        {/* Content Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* Revenue Chart */}
-          <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4 flex flex-col justify-between">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">SALES REVENUE TREND</h2>
-                <p className="text-[11px] font-bold text-slate-400">WalangBrownout Case Study Seasonal Demand & Recovery (2026)</p>
-              </div>
-              <span className="bg-sky-50 text-sky-800 text-xs font-black px-2.5 py-1 rounded-xl border border-sky-200 flex items-center space-x-1">
-                <TrendingUp className="w-3.5 h-3.5" />
-                <span>+18.5% YoY Recovery</span>
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-white/15 border border-white/20 backdrop-blur px-3.5 py-1.5 text-xs font-bold">
+                {kpiStats.totalProducts} products
+              </span>
+              <span className="rounded-full bg-white/15 border border-white/20 backdrop-blur px-3.5 py-1.5 text-xs font-bold">
+                {activeAlertsList.length} active alerts
               </span>
             </div>
+          </div>
+        </section>
 
-            <div className="w-full h-64 pt-2">
-              <svg className="w-full h-full overflow-visible" viewBox="0 0 500 200">
-                <defs>
-                  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#0284c7" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#0284c7" stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
+        {/* KPIs */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <KpiCard label="Total Products" value={kpiStats.totalProducts} hint="Active SKUs cataloged" icon={Package} tone="sky" />
+          <KpiCard label="Low Stock Alert" value={kpiStats.lowStockCount} hint="Below minimum safety level" icon={AlertTriangle} tone="amber" />
+          <KpiCard label="Out of Stock" value={kpiStats.outOfStockCount} hint="Urgent replenishment required" icon={ShieldAlert} tone="rose" />
+          <KpiCard label="Expiring Items" value={kpiStats.expiringCount} hint="Warranty limits near expiry" icon={Clock} tone="indigo" />
+        </section>
 
-                <line x1="0" y1="20" x2="500" y2="20" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="0" y1="60" x2="500" y2="60" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="0" y1="100" x2="500" y2="100" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="0" y1="140" x2="500" y2="140" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="0" y1="180" x2="500" y2="180" stroke="#f1f5f9" strokeWidth="1" />
-
-                <text x="5" y="23" className="text-[9px] font-bold fill-slate-400">100</text>
-                <text x="5" y="63" className="text-[9px] font-bold fill-slate-400">80</text>
-                <text x="5" y="103" className="text-[9px] font-bold fill-slate-400">60</text>
-                <text x="5" y="143" className="text-[9px] font-bold fill-slate-400">40</text>
-                <text x="5" y="183" className="text-[9px] font-bold fill-slate-400">20</text>
-
-                <path 
-                  d="M 30,170 C 60,160 70,155 90,150 C 120,140 130,105 150,90 C 180,68 190,62 210,60 C 240,58 250,42 270,40 C 300,38 310,95 330,110 C 360,132 370,128 390,130 C 430,132 450,50 480,30 L 480,180 L 30,180 Z" 
-                  fill="url(#chartGradient)" 
-                />
-
-                <path 
-                  d="M 30,170 C 60,160 70,155 90,150 C 120,140 130,105 150,90 C 180,68 190,62 210,60 C 240,58 250,42 270,40 C 300,38 310,95 330,110 C 360,132 370,128 390,130 C 430,132 450,50 480,30" 
-                  fill="none" 
-                  stroke="#0284c7" 
-                  strokeWidth="3.5" 
-                  strokeLinecap="round" 
-                />
-
-                {points.map((pt) => (
-                  <g key={pt.month}>
-                    <circle 
-                      cx={pt.cx} 
-                      cy={pt.cy} 
-                      r="4.5" 
-                      fill="#0284c7" 
-                      stroke="#ffffff" 
-                      strokeWidth="2" 
-                    />
-                    <text x={pt.cx - 8} y={198} className="text-[10px] font-bold fill-slate-600">{pt.month}</text>
-                  </g>
-                ))}
-              </svg>
+        {/* Chart + alerts */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-7 rounded-3xl bg-white/90 backdrop-blur border border-slate-200/70 p-6 shadow-sm space-y-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-extrabold tracking-tight">Sales Revenue Trend</h2>
+                <p className="text-xs font-medium text-slate-500 mt-0.5">Seasonal demand & recovery (2026)</p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 px-3 py-1.5 text-xs font-bold">
+                <TrendingUp className="w-3.5 h-3.5" />
+                +18.5% YoY Recovery
+              </span>
             </div>
+            <SalesChart />
           </div>
 
-          {/* System Alerts Feed */}
-          <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center space-x-2">
-                  <ShieldAlert className="w-5 h-5 text-sky-700" />
-                  <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">SYSTEM ALERTS</h2>
+          <div className="lg:col-span-5 rounded-3xl bg-white/90 backdrop-blur border border-slate-200/70 p-6 shadow-sm flex flex-col">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-sky-50 text-sky-700">
+                  <ShieldAlert className="w-4 h-4" />
                 </div>
-
-                <Link 
-                  to="/alerts" 
-                  className="bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-extrabold px-3 py-1 rounded-xl border border-sky-200 transition flex items-center space-x-1 cursor-pointer"
-                >
-                  <span>{activeAlertsList.length} Active</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                <h2 className="text-base font-extrabold tracking-tight">System Alerts</h2>
               </div>
-
-              <div className="space-y-2.5">
-                {activeAlertsList.length > 0 ? (
-                  activeAlertsList.slice(0, 5).map((alert) => (
-                    <div 
-                      key={alert.id} 
-                      className="p-3.5 rounded-2xl border bg-sky-50/40 border-sky-200 flex items-center justify-between"
-                    >
-                      <div>
-                        <p className="text-xs font-black text-slate-900">{alert.item}</p>
-                        <p className="text-[11px] font-semibold text-slate-500 mt-0.5">{alert.details || alert.type}</p>
-                      </div>
-
-                      <span className={`inline-block border font-black px-2.5 py-0.5 rounded-full text-[10px] ${getPriorityBadge(alert.priority)}`}>
-                        {alert.priority}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="py-8 text-center text-xs font-bold text-slate-400">
-                    All system alerts resolved! No active warnings.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 text-center">
-              <Link to="/alerts" className="text-xs font-black text-sky-700 hover:text-sky-900 hover:underline">
-                Manage System Alerts →
+              <Link to="/alerts" className="inline-flex items-center gap-1 rounded-full bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold px-3 py-1.5">
+                {activeAlertsList.length} Active <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
+
+            <div className="mt-5 space-y-2.5 flex-1">
+              {activeAlertsList.length > 0 ? (
+                activeAlertsList.slice(0, 5).map((alert) => (
+                  <div key={alert.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-white hover:shadow-sm p-3.5">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${dotStyle[alert.priority] || 'bg-slate-400'}`} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-slate-900 truncate">{alert.item}</p>
+                        <p className="text-xs font-medium text-slate-500 truncate">{alert.details || alert.type}</p>
+                      </div>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${priorityStyle[alert.priority] || 'bg-slate-100 text-slate-700 ring-slate-200'}`}>
+                      {alert.priority}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="py-10 text-center text-sm font-semibold text-slate-400">All system alerts resolved! No active warnings.</div>
+              )}
+            </div>
+
+            <Link to="/alerts" className="mt-5 pt-4 border-t border-slate-100 text-center text-sm font-bold text-sky-700 hover:text-sky-900">
+              Manage System Alerts →
+            </Link>
+          </div>
+        </section>
+
+        {/* Stock health */}
+        <section className="rounded-3xl bg-white/90 backdrop-blur border border-slate-200/70 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-extrabold tracking-tight">Stock Health</h2>
+              <p className="text-xs font-medium text-slate-500 mt-0.5">Share of products by stock level</p>
+            </div>
+            <Link to="/inventory" className="text-xs font-bold text-sky-700 hover:text-sky-900">View inventory →</Link>
           </div>
 
-        </div>
+          <div className="flex h-3 w-full overflow-hidden rounded-full bg-slate-100">
+            <div className="bg-emerald-500" style={{ width: `${stockHealth.goodPct}%` }} />
+            <div className="bg-amber-400" style={{ width: `${stockHealth.lowPct}%` }} />
+            <div className="bg-rose-500" style={{ width: `${stockHealth.outPct}%` }} />
+          </div>
 
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs font-semibold text-slate-600">
+            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />In stock · {stockHealth.good}</span>
+            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" />Low stock · {stockHealth.low}</span>
+            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-rose-500" />Out of stock · {stockHealth.out}</span>
+          </div>
+        </section>
       </main>
     </div>
   );
