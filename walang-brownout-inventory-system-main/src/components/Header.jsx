@@ -140,7 +140,7 @@ export default function Header({ title = 'Dashboard', onMenuOpen }) {
 
   return (
 
-    <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200/70 sticky top-0 z-30 w-full px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+    <header className="bg-white/60 backdrop-blur-2xl border-b border-slate-200/60 sticky top-0 z-30 w-full px-4 sm:px-6 lg:px-10 py-3.5 flex items-center justify-between">
 
       {/* LEFT SIDE */}
 
@@ -148,7 +148,7 @@ export default function Header({ title = 'Dashboard', onMenuOpen }) {
 
         <button
           onClick={onMenuOpen}
-          className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+          className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition cursor-pointer"
           aria-label="Open Navigation Menu"
         >
           <Menu className="w-5 h-5" />
@@ -156,15 +156,15 @@ export default function Header({ title = 'Dashboard', onMenuOpen }) {
 
         <div className="flex items-center space-x-2 text-xs font-extrabold text-slate-500">
 
-          <span className="hidden sm:inline">
-            WalangBrownout
+          <span className="hidden sm:inline text-slate-400 font-semibold">
+            Workspace
           </span>
 
           <span className="hidden sm:inline text-slate-300">
             /
           </span>
 
-          <span className="text-slate-900 font-black">
+          <span className="text-slate-900 font-extrabold text-sm tracking-tight">
             {title}
           </span>
 

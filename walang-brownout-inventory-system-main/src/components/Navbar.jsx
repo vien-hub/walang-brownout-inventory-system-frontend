@@ -81,103 +81,120 @@ export default function Navbar({ isOpen, onClose }) {
     navigate('/');
   };
 
-  const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Inventory List', path: '/inventory', icon: Package },
-    { name: 'Product Details', path: '/product-details', icon: Box },
-    { name: 'Reports', path: '/reports', icon: FileText },
-    { name: 'Alerts', path: '/alerts', icon: Bell, badge: activeAlertsCount },
-    { name: 'Reorder Planner', path: '/reorder-planner', icon: ShoppingCart },
-    { name: 'User Management', path: '/user-management', icon: Users },
-    { name: 'Transaction Records', path: '/transaction-records', icon: Receipt },
-    { name: 'FIFO Backtracking', path: '/fifo-backtracking', icon: Layers },
+  const navGroups = [
+    { label: 'Overview', items: [
+      { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    ]},
+    { label: 'Inventory', items: [
+      { name: 'Inventory List', path: '/inventory', icon: Package },
+      { name: 'Product Details', path: '/product-details', icon: Box },
+      { name: 'FIFO Backtracking', path: '/fifo-backtracking', icon: Layers },
+      { name: 'Reorder Planner', path: '/reorder-planner', icon: ShoppingCart },
+    ]},
+    { label: 'Operations', items: [
+      { name: 'Transaction Records', path: '/transaction-records', icon: Receipt },
+      { name: 'Reports', path: '/reports', icon: FileText },
+      { name: 'Alerts', path: '/alerts', icon: Bell, badge: activeAlertsCount },
+    ]},
+    { label: 'Admin', items: [
+      { name: 'User Management', path: '/user-management', icon: Users },
+    ]},
   ];
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex">
-      {/* Backdrop */}
-      <div 
-        onClick={onClose}
-        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" 
-      />
+    <>
+      {/* Mobile backdrop */}
+      {isOpen && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm lg:hidden"
+        />
+      )}
 
-      {/* Sidebar Drawer */}
-      <div className="relative w-80 max-w-[85vw] bg-white/90 backdrop-blur-2xl border-r border-white/60 h-full flex flex-col justify-between p-5 shadow-2xl shadow-slate-900/20 z-10">
-        
-        <div className="space-y-6 overflow-y-auto">
-          {/* Header Logo */}
-          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2.5 bg-linear-to-br from-sky-500 to-indigo-600 text-white rounded-2xl shadow-md shadow-sky-500/30">
+      {/* Sidebar: always visible on desktop, slides in on mobile */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 flex flex-col justify-between overflow-hidden bg-slate-950 text-slate-300 border-r border-white/5 transition-transform duration-300 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0`}
+      >
+        {/* Glow decorations */}
+        <div className="pointer-events-none absolute -top-24 -left-16 h-64 w-64 rounded-full bg-sky-500/25 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-10 -right-24 h-64 w-64 rounded-full bg-indigo-500/20 blur-3xl" />
+
+        <div className="relative flex-1 overflow-y-auto p-5 space-y-7">
+          {/* Logo */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-linear-to-br from-sky-400 to-indigo-600 text-white rounded-2xl shadow-lg shadow-sky-500/40">
                 <ShieldAlert className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-base font-black text-slate-900 leading-tight">WalangBrownout</h2>
-                <p className="text-[10px] font-extrabold text-sky-700 tracking-wider uppercase">INVENTORY MANAGEMENT</p>
+                <h2 className="text-base font-extrabold text-white leading-tight tracking-tight">WalangBrownout</h2>
+                <p className="text-[10px] font-bold text-sky-300/80 tracking-widest uppercase">Inventory System</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 cursor-pointer">
+            <button onClick={onClose} className="lg:hidden p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 cursor-pointer" aria-label="Close menu">
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Navigation Links */}
-          <div className="space-y-1">
-            <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider px-3 mb-2">NAVIGATION MENU</p>
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={onClose}
-                  className={`flex items-center justify-between px-3.5 py-3 rounded-2xl font-bold text-xs transition ${
-                    isActive 
-                      ? 'bg-linear-to-r from-sky-50 to-indigo-50 text-sky-700 border border-sky-100 shadow-xs font-black' 
-                      : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-sky-600' : 'text-slate-400'}`} />
-                    <span>{item.name}</span>
-                  </div>
-                  {Number(item.badge) > 0 && (
-                    <span className="bg-rose-600 text-white font-black text-[10px] px-2 py-0.5 rounded-full">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
+          {/* Menu */}
+          <nav className="space-y-6">
+            {navGroups.map((group) => (
+              <div key={group.label} className="space-y-1.5">
+                <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">{group.label}</p>
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={onClose}
+                      className={`group flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-[13px] font-semibold transition ${
+                        isActive
+                          ? 'bg-linear-to-r from-sky-500 to-indigo-600 text-white shadow-lg shadow-sky-500/25'
+                          : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <span className="flex items-center gap-3">
+                        <Icon className={`w-[18px] h-[18px] ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-sky-300'}`} />
+                        {item.name}
+                      </span>
+                      {Number(item.badge) > 0 && (
+                        <span className="bg-rose-500 text-white font-bold text-[10px] px-2 py-0.5 rounded-full shadow shadow-rose-500/40">
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
+          </nav>
         </div>
 
-        {/* Dynamic User Card & Sign Out */}
-        <div className="space-y-3 pt-4 border-t border-slate-200 mt-auto">
-          <div className="p-3 bg-white border border-slate-200 rounded-2xl flex items-center space-x-3 shadow-2xs">
-            <div className="w-9 h-9 rounded-xl bg-linear-to-br from-sky-500 to-indigo-600 text-white font-black text-xs flex items-center justify-center shrink-0 uppercase tracking-wider">
+        {/* User card */}
+        <div className="relative p-4 border-t border-white/10 bg-white/[0.03]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-sky-400 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0 uppercase shadow-lg shadow-sky-500/30">
               {getInitials(currentUser.name)}
             </div>
-            <div className="overflow-hidden">
-              <p className="text-xs font-black text-slate-900 truncate">{currentUser.name}</p>
-              <p className="text-[10px] font-bold text-slate-500 truncate">{currentUser.email || currentUser.role}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-white truncate">{currentUser.name}</p>
+              <p className="text-[11px] font-medium text-slate-400 truncate">{currentUser.role}</p>
             </div>
+            <button
+              onClick={handleSignOut}
+              title="Sign out"
+              aria-label="Sign out"
+              className="p-2.5 rounded-xl text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer"
+            >
+              <LogOut className="w-[18px] h-[18px]" />
+            </button>
           </div>
-
-          <button 
-            onClick={handleSignOut}
-            className="w-full py-2.5 px-4 bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 font-extrabold text-xs rounded-xl border border-slate-200 hover:border-rose-200 transition flex items-center justify-center space-x-2 cursor-pointer shadow-2xs"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Sign Out</span>
-          </button>
         </div>
-
-      </div>
-    </div>
+      </aside>
+    </>
   );
 }
