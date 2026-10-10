@@ -64,22 +64,31 @@ export default function Alerts() {
     }
   };
 
+  // Priority: Critical = solid red, Warning = yellow, Pending = light red
   const getPriorityBadge = (priority) => {
     switch (priority) {
       case 'Critical':
-      case 'High': return 'bg-rose-50 text-rose-800 border-rose-300';
+      case 'High': return 'bg-rose-600 text-white border-rose-600';
       case 'Warning':
-      case 'Medium': return 'bg-amber-50 text-amber-800 border-amber-300';
-      default: return 'bg-sky-50 text-sky-800 border-sky-300';
+      case 'Medium': return 'bg-amber-100 text-amber-900 border-amber-400';
+      default: return 'bg-rose-50 text-rose-700 border-rose-300'; // Pending
     }
   };
 
+  // Status: Active = green, Acknowledged = yellow, Resolved = grey
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'Resolved': return 'bg-sky-50 text-sky-800 border-sky-300';
-      case 'Acknowledged': return 'bg-amber-50 text-amber-800 border-amber-300';
-      default: return 'bg-rose-50 text-rose-800 border-rose-300';
+      case 'Resolved': return 'bg-slate-100 text-slate-600 border-slate-300';
+      case 'Acknowledged': return 'bg-amber-100 text-amber-900 border-amber-400';
+      default: return 'bg-emerald-50 text-emerald-800 border-emerald-400'; // Active
     }
+  };
+
+  // Alert type colour: red = urgent, yellow = needs action soon, purple = too much stock
+  const getTypeColor = (type) => {
+    if (type === 'Out of Stock' || type === 'Expired') return 'text-rose-700';
+    if (type === 'Overstock') return 'text-indigo-700';
+    return 'text-amber-700';
   };
 
   return (
@@ -112,7 +121,7 @@ export default function Alerts() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search alerts by ID, SKU, product, or details..." 
-                className="w-full pl-10 pr-8 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+                className="w-full pl-10 pr-8 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
               />
               {searchTerm && (
                 <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer">
@@ -125,7 +134,7 @@ export default function Alerts() {
               <select 
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="w-full px-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
+                className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
               >
                 <option value="">Alert Type: All</option>
                 <option value="Low Stock">Low Stock</option>
@@ -141,7 +150,7 @@ export default function Alerts() {
               <select 
                 value={selectedPriority}
                 onChange={(e) => setSelectedPriority(e.target.value)}
-                className="w-full px-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
+                className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
               >
                 <option value="">Priority: All</option>
                 <option value="Critical">Critical</option>
@@ -156,7 +165,7 @@ export default function Alerts() {
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 uppercase text-[10px] font-black tracking-wider">
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 uppercase text-xs font-bold tracking-wide">
                   <th className="py-3.5 px-4">Alert ID</th>
                   <th className="py-3.5 px-4">Alert Type</th>
                   <th className="py-3.5 px-4">Item / Product</th>
@@ -167,29 +176,29 @@ export default function Alerts() {
                   <th className="py-3.5 px-4 text-center">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs font-semibold">
+              <tbody className="divide-y divide-slate-100 text-sm font-medium">
                 {filteredAlerts.length > 0 ? (
                   filteredAlerts.map((alt) => (
                     <tr key={alt.id} className="hover:bg-sky-50/40 transition">
-                      <td className="py-3.5 px-4 font-mono font-black text-slate-900">{alt.id}</td>
-                      <td className="py-3.5 px-4 font-black text-amber-700">{alt.type}</td>
-                      <td className="py-3.5 px-4 font-black text-slate-900">{alt.item}</td>
-                      <td className="py-3.5 px-4 text-slate-600">{alt.details}</td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span className={`inline-block border font-black px-2.5 py-0.5 rounded-full text-[10px] ${getPriorityBadge(alt.priority)}`}>
+                      <td className="py-4 px-4 text-xs font-semibold text-slate-500 whitespace-nowrap">{alt.id}</td>
+                      <td className={`py-4 px-4 font-bold whitespace-nowrap ${getTypeColor(alt.type)}`}>{alt.type}</td>
+                      <td className="py-4 px-4 font-bold text-slate-900">{alt.item}</td>
+                      <td className="py-4 px-4 text-slate-700">{alt.details}</td>
+                      <td className="py-4 px-4 text-center">
+                        <span className={`inline-block border font-bold px-3 py-1 rounded-full text-xs ${getPriorityBadge(alt.priority)}`}>
                           {alt.priority}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span className={`inline-block border font-black px-2.5 py-0.5 rounded-full text-[10px] ${getStatusBadge(alt.status)}`}>
+                      <td className="py-4 px-4 text-center">
+                        <span className={`inline-block border font-bold px-3 py-1 rounded-full text-xs ${getStatusBadge(alt.status)}`}>
                           {alt.status}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">{alt.timestamp}</td>
+                      <td className="py-4 px-4 text-xs text-slate-600 whitespace-nowrap">{alt.timestamp}</td>
                       <td className="py-3.5 px-4 text-center">
                         <button 
                           onClick={() => setActiveAlert(alt)}
-                          className="inline-flex items-center space-x-1 bg-slate-100 hover:bg-sky-100 text-slate-800 hover:text-sky-800 font-extrabold px-3 py-1.5 rounded-xl border border-slate-200 transition text-[11px] cursor-pointer"
+                          className="inline-flex items-center space-x-1 bg-slate-100 hover:bg-sky-100 text-slate-800 hover:text-sky-800 font-bold px-3.5 py-2 rounded-xl border border-slate-200 transition text-xs cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>View</span>
