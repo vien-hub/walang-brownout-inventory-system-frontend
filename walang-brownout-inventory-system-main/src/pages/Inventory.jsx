@@ -5,6 +5,8 @@ import Navbar from '../components/Navbar.jsx';
 import { Plus, Search, ChevronLeft, ChevronRight, Eye, X, PackagePlus, ShieldAlert } from 'lucide-react';
 import {
   DEFAULT_INVENTORY,
+  SEASONS,
+  isOverstocked,
   abcBadge,
   classifyABC,
   formatPeso,
@@ -47,6 +49,8 @@ export default function Inventory() {
     dailyUsage: '2',
     leadTime: '7',
     safetyStock: '5',
+    seasonPeak: 'none',
+    seasonMultiplier: '1.5',
     location: '',
     receivedDate: new Date().toISOString().slice(0, 10),
     expiryDate: new Date(Date.now() + 730 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
@@ -182,6 +186,8 @@ export default function Inventory() {
       dailyUsage: Number(newProduct.dailyUsage) || 2,
       leadTime: Number(newProduct.leadTime) || 7,
       safetyStock: Number(newProduct.safetyStock) || 0,
+      seasonPeak: newProduct.seasonPeak,
+      seasonMultiplier: Number(newProduct.seasonMultiplier) || 1,
       receivedDate: newProduct.receivedDate,
       expiryDate: newProduct.expiryDate,
     };
@@ -342,6 +348,9 @@ export default function Inventory() {
                         <span className={`inline-block border font-black px-2.5 py-0.5 rounded-full text-[10px] ${statusBadge(status)}`}>
                           {status}
                         </span>
+                        {isOverstocked(item) && (
+                          <span className="ml-1.5 inline-block border font-black px-2 py-0.5 rounded-full text-[10px] bg-indigo-50 text-indigo-800 border-indigo-300">Overstock</span>
+                        )}
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <Link 
@@ -515,6 +524,27 @@ export default function Inventory() {
                   <label className="block mb-1 uppercase tracking-wider text-[10px] font-black">Safety Stock</label>
                   <input type="number" min="0" placeholder="5" value={newProduct.safetyStock}
                     onChange={(e) => setNewProduct({ ...newProduct, safetyStock: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold" />
+                </div>
+              </div>
+
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 pt-1">Seasonal demand</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block mb-1 uppercase tracking-wider text-[10px] font-black">Peak Season</label>
+                  <select value={newProduct.seasonPeak}
+                    onChange={(e) => setNewProduct({ ...newProduct, seasonPeak: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold">
+                    {Object.entries(SEASONS).map(([key, season]) => (
+                      <option key={key} value={key}>{season.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block mb-1 uppercase tracking-wider text-[10px] font-black">Peak Demand (x)</label>
+                  <input type="number" min="1" step="0.1" placeholder="1.5" value={newProduct.seasonMultiplier}
+                    disabled={newProduct.seasonPeak === 'none'}
+                    onChange={(e) => setNewProduct({ ...newProduct, seasonMultiplier: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold" />
                 </div>
               </div>

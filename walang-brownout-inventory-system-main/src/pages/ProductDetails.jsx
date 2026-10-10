@@ -7,7 +7,9 @@ import {
   Trash2, X, ShieldAlert, AlertCircle, Search 
 } from 'lucide-react';
 import {
+  SEASONS,
   abcBadge,
+  isOverstocked,
   classifyABC,
   getATP,
   formatTxDate,
@@ -43,7 +45,9 @@ function loadProduct(sku, querySku) {
       location: product.location || 'Main Warehouse - Section A4',
       desc: product.desc || 'No description provided.',
       threshold: parseThreshold(product.threshold),
-      dailyUsage: plan.dailyUsage,
+      dailyUsage: plan.baseDailyUsage,
+      seasonPeak: plan.season,
+      seasonMultiplier: plan.seasonMultiplier,
       leadTime: plan.leadTime,
       safetyStock: plan.safetyStock,
       receivedDate: product.receivedDate || '2026-08-01',
@@ -149,6 +153,8 @@ function ProductDetailsView({ sku, querySku }) {
       desc: editFormData.desc,
       threshold: Number(editFormData.threshold) || 5,
       dailyUsage: Number(editFormData.dailyUsage) || 2,
+      seasonPeak: editFormData.seasonPeak || 'none',
+      seasonMultiplier: Number(editFormData.seasonMultiplier) || 1,
       leadTime: Number(editFormData.leadTime) || 7,
       safetyStock: Math.max(Number(editFormData.safetyStock) || 0, 0)
     };
@@ -316,6 +322,9 @@ function ProductDetailsView({ sku, querySku }) {
               <span className={`inline-block border font-black px-2.5 py-0.5 rounded-full text-[10px] ${statusBadge(getStatus(product))}`}>
                 {getStatus(product)}
               </span>
+              {isOverstocked(product) && (
+                <span className="ml-2 inline-block border font-black px-2.5 py-0.5 rounded-full text-[10px] bg-indigo-50 text-indigo-800 border-indigo-300">Overstock</span>
+              )}
             </h2>
 
             <div className="space-y-3">
@@ -402,7 +411,8 @@ function ProductDetailsView({ sku, querySku }) {
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">REORDER POINT</p>
                   <p className="text-2xl font-black text-slate-900 mt-1">{getPlanning(product).reorderPoint} Units</p>
                   <p className="text-[10px] font-semibold text-slate-500 mt-0.5">
-                    {getPlanning(product).dailyUsage}/day × {getPlanning(product).leadTime} days + {getPlanning(product).safetyStock} safety
+                    {getPlanning(product).dailyUsage}/day x {getPlanning(product).leadTime} days + {getPlanning(product).safetyStock} safety
+                    {getPlanning(product).isPeak ? ' (peak season)' : ''}
                   </p>
                 </div>
 
@@ -591,6 +601,26 @@ function ProductDetailsView({ sku, querySku }) {
                   <label className="block mb-1 uppercase text-[10px] font-black">Safety Stock</label>
                   <input type="number" min="0" value={editFormData.safetyStock}
                     onChange={(e) => setEditFormData({ ...editFormData, safetyStock: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block mb-1 uppercase text-[10px] font-black">Peak Season</label>
+                  <select value={editFormData.seasonPeak}
+                    onChange={(e) => setEditFormData({ ...editFormData, seasonPeak: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    {Object.entries(SEASONS).map(([key, season]) => (
+                      <option key={key} value={key}>{season.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block mb-1 uppercase text-[10px] font-black">Peak Demand (x)</label>
+                  <input type="number" min="1" step="0.1" value={editFormData.seasonMultiplier}
+                    disabled={editFormData.seasonPeak === 'none'}
+                    onChange={(e) => setEditFormData({ ...editFormData, seasonMultiplier: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500" />
                 </div>
               </div>

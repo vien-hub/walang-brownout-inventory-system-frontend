@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight, AlertCircle 
 } from 'lucide-react';
 import {
+  SEASONS,
   abcBadge,
   classifyABC,
   formatPeso,
@@ -57,12 +58,13 @@ export default function ReorderPlanner() {
     : null;
 
   // Reorder point = (daily demand x lead time) + safety stock
-  const planning = currentItem ? getPlanning(currentItem) : { dailyUsage: 0, leadTime: 0, safetyStock: 0, reorderPoint: 0 };
-  const { dailyUsage, leadTime, safetyStock, reorderPoint: computedROP } = planning;
+  const planning = currentItem
+    ? getPlanning(currentItem)
+    : { baseDailyUsage: 0, dailyUsage: 0, leadTime: 0, safetyStock: 0, reorderPoint: 0, maxStockLevel: 0, season: 'none', seasonMultiplier: 1, isPeak: false };
+  const { dailyUsage, leadTime, safetyStock, reorderPoint: computedROP, maxStockLevel, baseDailyUsage, isPeak, seasonMultiplier, season } = planning;
   const onHand = Number(currentItem?.onHand) || 0;
   const isBelowROP = onHand <= computedROP;
-  // Order up to one extra lead-time cycle of demand above the reorder point
-  const maxStockLevel = computedROP + Math.ceil(dailyUsage * leadTime);
+  // Order up to the maximum stock level (reorder point + one more lead-time cycle of demand)
   const suggestedOrderQty = Math.max(maxStockLevel - onHand, 1);
   const unitPrice = parsePrice(currentItem?.price);
   const totalEstimatedCost = suggestedOrderQty * unitPrice;
@@ -213,7 +215,13 @@ export default function ReorderPlanner() {
                     <div className="space-y-3">
                       <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">DEMAND</p>
-                        <p className="text-sm font-black text-slate-900 mt-1">Average Daily Demand: <span className="text-emerald-700">{dailyUsage} Units / Day</span></p>
+                        <p className="text-sm font-black text-slate-900 mt-1">Average Daily Demand: <span className="text-emerald-700">{dailyUsage} Units / Day</span>
+                          {isPeak && (
+                            <span className="block text-[11px] font-bold text-amber-700 mt-0.5">
+                              Peak season: normal {baseDailyUsage}/day x {seasonMultiplier} ({SEASONS[season].label})
+                            </span>
+                          )}
+                        </p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">

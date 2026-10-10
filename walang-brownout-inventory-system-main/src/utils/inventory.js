@@ -8,6 +8,8 @@
  *  - Stock status ........ getStatus()
  *  - ABC classification .. classifyABC()      (annual usage value, 80 / 15 / 5 rule)
  *  - Reorder point ....... getPlanning()      ROP = (daily demand x lead time) + safety stock
+ *  - Seasonal demand ..... getPlanning()      demand is multiplied during a product's peak season
+ *  - Overstock ........... isOverstocked()    on hand above the maximum stock level
  *  - Available to promise  getATP()           ATP = physical stock - allocated stock
  *  - FIFO ................ fifoOrder(), issueFifo()
  *  - Expiration .......... getExpiryInfo()
@@ -24,12 +26,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /* ---------- starting data (used until the database has saved inventory) ---------- */
 
 export const DEFAULT_INVENTORY = [
-  { sku: 'SKU-8821', name: 'Inverter Generator 3kVA', fullName: 'Inverter Generator 3kVA (Silent Series)', category: 'Generators', price: '₱ 24,500.00', supplier: 'PowerPro Heavy Industries Inc.', desc: 'High-efficiency 3000W portable inverter generator.', onHand: 18, available: 15, reserved: 3, threshold: '5 Units', location: 'Warehouse A', status: 'In Stock', receivedDate: '2026-08-01', expiryDate: '2028-08-01', dailyUsage: 2, leadTime: 7, safetyStock: 5 },
+  { sku: 'SKU-8821', name: 'Inverter Generator 3kVA', fullName: 'Inverter Generator 3kVA (Silent Series)', category: 'Generators', price: '₱ 24,500.00', supplier: 'PowerPro Heavy Industries Inc.', desc: 'High-efficiency 3000W portable inverter generator.', onHand: 18, available: 15, reserved: 3, threshold: '5 Units', location: 'Warehouse A', status: 'In Stock', receivedDate: '2026-08-01', expiryDate: '2028-08-01', dailyUsage: 2, leadTime: 7, safetyStock: 5, seasonPeak: 'rainy', seasonMultiplier: 1.5 },
   { sku: 'SKU-4102', name: 'Solar Charge Controller 60A', fullName: 'MPPT Solar Charge Controller 60A 12V/24V/48V', category: 'Solar Systems', price: '₱ 8,200.00', supplier: 'SolarTech Energy Supplies', desc: 'Advanced MPPT controller with 99% tracking efficiency.', onHand: 3, available: 2, reserved: 1, threshold: '5 Units', location: 'Shelf B-3', status: 'Low Stock', receivedDate: '2026-08-05', expiryDate: '2028-08-05', dailyUsage: 1, leadTime: 5, safetyStock: 3 },
-  { sku: 'SKU-9011', name: 'LiFePO4 100Ah Battery Pack', fullName: 'Lithium Iron Phosphate Battery 12.8V 100Ah', category: 'Batteries', price: '₱ 19,800.00', supplier: 'Voltaic Power Corp.', desc: 'Deep cycle lithium battery with integrated Smart BMS.', onHand: 0, available: 0, reserved: 0, threshold: '10 Units', location: 'Warehouse B', status: 'Out of Stock', receivedDate: '2026-08-10', expiryDate: '2028-08-10', dailyUsage: 1, leadTime: 10, safetyStock: 3 },
+  { sku: 'SKU-9011', name: 'LiFePO4 100Ah Battery Pack', fullName: 'Lithium Iron Phosphate Battery 12.8V 100Ah', category: 'Batteries', price: '₱ 19,800.00', supplier: 'Voltaic Power Corp.', desc: 'Deep cycle lithium battery with integrated Smart BMS.', onHand: 0, available: 0, reserved: 0, threshold: '10 Units', location: 'Warehouse B', status: 'Out of Stock', receivedDate: '2026-08-10', expiryDate: '2028-08-10', dailyUsage: 1, leadTime: 10, safetyStock: 3, seasonPeak: 'rainy', seasonMultiplier: 1.4 },
   { sku: 'SKU-1044', name: 'Automatic Transfer Switch 100A', fullName: 'Dual Power Automatic Transfer Switch 100A 220V', category: 'Switches', price: '₱ 4,500.00', supplier: 'GridGuard Switchgears', desc: 'Seamless automatic transfer switch.', onHand: 25, available: 22, reserved: 3, threshold: '8 Units', location: 'Shelf A-1', status: 'In Stock', receivedDate: '2026-08-12', expiryDate: '2028-08-12', dailyUsage: 1, leadTime: 6, safetyStock: 3 },
   { sku: 'SKU-3092', name: 'Monocrystalline Solar Panel 450W', fullName: 'High-Efficiency Monocrystalline Solar Panel 450W', category: 'Solar Systems', price: '₱ 7,400.00', supplier: 'SolarTech Energy Supplies', desc: 'PERC half-cut cell solar module.', onHand: 42, available: 40, reserved: 2, threshold: '15 Units', location: 'Yard Storage', status: 'In Stock', receivedDate: '2026-08-15', expiryDate: '2028-08-15', dailyUsage: 3, leadTime: 8, safetyStock: 6 },
-  { sku: 'SKU-5201', name: 'Deep Cycle Gel Battery 200Ah', fullName: 'Sealed Lead Acid Gel Deep Cycle Battery 12V 200Ah', category: 'Batteries', price: '₱ 14,200.00', supplier: 'Voltaic Power Corp.', desc: 'Maintenance-free gel battery.', onHand: 5, available: 4, reserved: 1, threshold: '6 Units', location: 'Shelf B-1', status: 'Low Stock', receivedDate: '2026-08-18', expiryDate: '2028-08-18', dailyUsage: 1, leadTime: 6, safetyStock: 2 },
+  { sku: 'SKU-5201', name: 'Deep Cycle Gel Battery 200Ah', fullName: 'Sealed Lead Acid Gel Deep Cycle Battery 12V 200Ah', category: 'Batteries', price: '₱ 14,200.00', supplier: 'Voltaic Power Corp.', desc: 'Maintenance-free gel battery.', onHand: 5, available: 4, reserved: 1, threshold: '6 Units', location: 'Shelf B-1', status: 'Low Stock', receivedDate: '2026-08-18', expiryDate: '2028-08-18', dailyUsage: 1, leadTime: 6, safetyStock: 2, seasonPeak: 'rainy', seasonMultiplier: 1.4 },
 ];
 
 /* ---------- small helpers ---------- */
@@ -122,17 +124,47 @@ export function getATP(item) {
 
 /* ---------- reorder point ---------- */
 
-export function getPlanning(item) {
-  const dailyUsage = Number(item.dailyUsage) > 0 ? Number(item.dailyUsage) : DEFAULT_DAILY_DEMAND;
+/**
+ * Peak seasons a product can be tied to. During its peak season the daily demand
+ * is multiplied by the product's "seasonMultiplier" (for example 1.5 = +50%).
+ */
+export const SEASONS = {
+  none: { label: 'No seasonal peak', months: [] },
+  rainy: { label: 'Rainy season (Jun-Nov)', months: [6, 7, 8, 9, 10, 11] },
+  hot: { label: 'Hot season (Mar-May)', months: [3, 4, 5] },
+};
+
+/**
+ * Demand, lead time, safety stock and the resulting reorder point of an item.
+ * `dailyUsage` is the demand for the current month (seasonal peak applied),
+ * `baseDailyUsage` is the normal demand without the peak.
+ */
+export function getPlanning(item, now = new Date()) {
+  const baseDailyUsage = Number(item.dailyUsage) > 0 ? Number(item.dailyUsage) : DEFAULT_DAILY_DEMAND;
   const leadTime = Number(item.leadTime) > 0 ? Number(item.leadTime) : DEFAULT_LEAD_TIME;
   const hasSafety = item.safetyStock !== undefined && item.safetyStock !== null && item.safetyStock !== '' && Number(item.safetyStock) >= 0;
   const safetyStock = hasSafety ? Number(item.safetyStock) : DEFAULT_SAFETY_STOCK;
+
+  const season = SEASONS[item.seasonPeak] ? item.seasonPeak : 'none';
+  const seasonMultiplier = Number(item.seasonMultiplier) > 0 ? Number(item.seasonMultiplier) : 1;
+  const isPeak = season !== 'none' && seasonMultiplier !== 1 && SEASONS[season].months.includes(now.getMonth() + 1);
+
+  const dailyUsage = isPeak ? baseDailyUsage * seasonMultiplier : baseDailyUsage;
   const reorderPoint = Math.ceil(dailyUsage * leadTime + safetyStock);
-  return { dailyUsage, leadTime, safetyStock, reorderPoint };
+  // Maximum stock level: the reorder point plus one more lead-time cycle of demand
+  const maxStockLevel = reorderPoint + Math.ceil(dailyUsage * leadTime);
+
+  return { baseDailyUsage, dailyUsage, leadTime, safetyStock, reorderPoint, maxStockLevel, season, seasonMultiplier, isPeak };
 }
 
 export function needsReorder(item) {
   return (Number(item.onHand) || 0) <= getPlanning(item).reorderPoint;
+}
+
+/** True when there is far more stock than the demand needs (above the maximum level). */
+export function isOverstocked(item) {
+  const onHand = Number(item.onHand) || 0;
+  return onHand > 0 && onHand > getPlanning(item).maxStockLevel;
 }
 
 /* ---------- ABC classification ---------- */
@@ -146,7 +178,7 @@ export function needsReorder(item) {
 export function classifyABC(items) {
   const rows = items.map((item) => ({
     sku: item.sku,
-    value: getPlanning(item).dailyUsage * 365 * parsePrice(item.price),
+    value: getPlanning(item).baseDailyUsage * 365 * parsePrice(item.price),
   }));
   const total = rows.reduce((sum, r) => sum + r.value, 0);
   rows.sort((a, b) => b.value - a.value);
@@ -266,7 +298,7 @@ export function buildAlerts(inventory, batchesDb = {}, existing = []) {
   inventory.forEach((item) => {
     const onHand = Number(item.onHand) || 0;
     const status = getStatus(item);
-    const { reorderPoint } = getPlanning(item);
+    const { reorderPoint, maxStockLevel } = getPlanning(item);
 
     if (status === 'Out of Stock') {
       push(item, 'Out of Stock', 'Critical', `Inventory depleted to 0 units (${item.sku})`);
@@ -274,6 +306,8 @@ export function buildAlerts(inventory, batchesDb = {}, existing = []) {
       push(item, 'Low Stock', 'Warning', `Low Stock (${onHand} left) • ${item.sku}`);
     } else if (onHand <= reorderPoint) {
       push(item, 'Reorder Point', 'Warning', `${onHand} on hand, reorder point is ${reorderPoint} • ${item.sku}`);
+    } else if (isOverstocked(item)) {
+      push(item, 'Overstock', 'Pending', `${onHand} on hand, maximum level is ${maxStockLevel} • ${item.sku}`);
     }
 
     const expiry = getExpiryInfo(item, batchesDb);

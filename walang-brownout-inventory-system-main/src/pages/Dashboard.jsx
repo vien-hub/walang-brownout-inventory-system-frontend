@@ -10,6 +10,7 @@ import {
   getInventory,
   getPlanning,
   isActive,
+  isOverstocked,
   loadAlerts,
   needsReorder,
 } from '../utils/inventory.js';
@@ -89,6 +90,8 @@ export default function Dashboard() {
       .sort((a, b) => a.abc.localeCompare(b.abc) || Number(a.item.onHand) - Number(b.item.onHand))
       .slice(0, 5);
   }, [inventory]);
+
+  const overstockCount = useMemo(() => inventory.filter(isOverstocked).length, [inventory]);
 
   const firstName = (user.name || 'there').trim().split(' ')[0];
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
@@ -196,6 +199,10 @@ export default function Dashboard() {
                 <div className="py-10 text-center text-sm font-medium text-slate-500">Every item is above its reorder point.</div>
               )}
             </div>
+
+            <Link to="/alerts" className="mt-4 border-t border-slate-200 pt-4 text-center text-sm font-semibold text-slate-800 hover:text-sky-700">
+              {overstockCount} overstocked {overstockCount === 1 ? 'item' : 'items'} →
+            </Link>
           </div>
         </section>
       </main>

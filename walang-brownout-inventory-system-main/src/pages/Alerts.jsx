@@ -131,6 +131,7 @@ export default function Alerts() {
                 <option value="Low Stock">Low Stock</option>
                 <option value="Out of Stock">Out of Stock</option>
                 <option value="Reorder Point">Reorder Point</option>
+                <option value="Overstock">Overstock</option>
                 <option value="Expiring Soon">Expiring Soon</option>
                 <option value="Expired">Expired</option>
               </select>
