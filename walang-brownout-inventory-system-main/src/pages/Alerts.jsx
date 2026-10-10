@@ -1,74 +1,30 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Header from '../components/Header.jsx';
 import Navbar from '../components/Navbar.jsx';
 import { Search, Eye, ShieldAlert, X, Lock } from 'lucide-react';
+import { getCurrentUser, loadAlerts } from '../utils/inventory.js';
 
 export default function Alerts() {
   const [isNavOpen, setIsNavOpen] = useState(false);
-
-  // Role Check & Active User Session
-  const [currentUser, setCurrentUser] = useState({ name: 'Justin Ralph', role: 'Administrator' });
-  useEffect(() => {
-    const session = localStorage.getItem('current_user');
-    if (session) {
-      try {
-        const parsed = JSON.parse(session);
-        if (parsed.role) setCurrentUser(parsed);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }, []);
-
+  const [currentUser] = useState(getCurrentUser);
   const isWarehouseStaff = currentUser.role === 'Warehouse Staff';
 
-  // Dynamic Alerts derived directly from inventory_db
-  const [alerts, setAlerts] = useState([]);
+  // Alerts are calculated from the live inventory (low stock, out of stock,
+  // reorder point, expiry). Saved Acknowledged / Resolved states are kept.
+  const [alerts, setAlerts] = useState(loadAlerts);
 
   useEffect(() => {
-    const syncAlertsWithInventory = () => {
-      const savedInv = localStorage.getItem('inventory_db');
-      if (!savedInv) {
-        setAlerts([]);
-        return;
-      }
+    localStorage.setItem('alerts_db', JSON.stringify(alerts));
+  }, [alerts]);
 
-      try {
-        const inventory = JSON.parse(savedInv);
-        const savedAlerts = localStorage.getItem('alerts_db');
-        const existingAlerts = savedAlerts ? JSON.parse(savedAlerts) : [];
-
-        // Generate alerts ONLY for items present in inventory_db
-        const liveAlerts = inventory
-          .filter(item => Number(item.onHand) <= 5 || item.status === 'Low Stock' || item.status === 'Out of Stock')
-          .map((item, index) => {
-            const stock = Number(item.onHand) || 0;
-            const existing = existingAlerts.find(a => a.sku === item.sku);
-
-            const isOut = stock === 0 || item.status === 'Out of Stock';
-
-            return {
-              id: existing ? existing.id : `ALT-100${index + 1}`,
-              type: isOut ? 'Out of Stock' : 'Low Stock',
-              item: item.name,
-              sku: item.sku,
-              details: isOut ? `Inventory depleted to 0 units (${item.sku})` : `Low Stock (${stock} left) • ${item.sku}`,
-              priority: isOut ? 'Critical' : 'Warning',
-              status: existing ? existing.status : 'Active',
-              timestamp: existing ? existing.timestamp : new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
-            };
-          });
-
-        setAlerts(liveAlerts);
-        localStorage.setItem('alerts_db', JSON.stringify(liveAlerts));
-      } catch (e) {
-        console.error(e);
-      }
+  useEffect(() => {
+    const refresh = () => setAlerts(loadAlerts());
+    window.addEventListener('storage', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.removeEventListener('storage', refresh);
+      window.removeEventListener('focus', refresh);
     };
-
-    syncAlertsWithInventory();
-    window.addEventListener('storage', syncAlertsWithInventory);
-    return () => window.removeEventListener('storage', syncAlertsWithInventory);
   }, []);
 
   // Filters State
@@ -102,7 +58,6 @@ export default function Alerts() {
 
     const updated = alerts.map(a => a.id === alertId ? { ...a, status: newStatus } : a);
     setAlerts(updated);
-    localStorage.setItem('alerts_db', JSON.stringify(updated));
 
     if (activeAlert) {
       setActiveAlert(prev => ({ ...prev, status: newStatus }));
@@ -144,7 +99,7 @@ export default function Alerts() {
         {/* Title Header */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">System Alerts Log</h1>
-          <p className="text-xs font-semibold text-slate-600 mt-0.5">Track low stock warnings and system events synchronized with active inventory items.</p>
+          <p className="text-xs font-semibold text-slate-600 mt-0.5">Low stock, out of stock, reorder point and expiry warnings calculated from your live inventory.</p>
         </div>
 
         {/* Filters Bar */}
@@ -175,6 +130,10 @@ export default function Alerts() {
                 <option value="">Alert Type: All</option>
                 <option value="Low Stock">Low Stock</option>
                 <option value="Out of Stock">Out of Stock</option>
+                <option value="Reorder Point">Reorder Point</option>
+                <option value="Overstock">Overstock</option>
+                <option value="Expiring Soon">Expiring Soon</option>
+                <option value="Expired">Expired</option>
               </select>
             </div>
 
@@ -241,7 +200,7 @@ export default function Alerts() {
                 ) : (
                   <tr>
                     <td colSpan="8" className="py-8 text-center text-xs font-bold text-slate-400">
-                      All inventory levels are above safety thresholds! No active warnings.
+                      No alerts. Stock levels and expiry dates are all within limits.
                     </td>
                   </tr>
                 )}

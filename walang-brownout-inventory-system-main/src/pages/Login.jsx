@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, User, AlertCircle, CheckCircle2, Shield, Package, TrendingUp } from 'lucide-react';
 import api from '../api/axios';
@@ -78,11 +78,11 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-slate-50 font-sans text-slate-900">
+    <div className="min-h-screen grid lg:grid-cols-2 font-sans text-slate-900">
       {/* Brand panel */}
-      <aside className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-linear-to-br from-sky-600 via-sky-700 to-indigo-800 p-12 text-white">
+      <aside className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-linear-to-br from-[#0b1620] via-[#12222f] to-[#0f2c36] p-12 text-white">
         <div className="absolute -top-24 -right-24 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -bottom-32 -left-20 h-96 w-96 rounded-full bg-indigo-400/20 blur-3xl" />
+        <div className="absolute -bottom-32 -left-20 h-96 w-96 rounded-full bg-cyan-400/15 blur-3xl" />
 
         <div className="relative inline-flex self-start rounded-3xl bg-white/95 px-5 py-3 shadow-2xl shadow-sky-950/30">
           <img src="/logo.png" alt="WalangBrownout Inventory System" className="h-14 w-auto" />
@@ -201,7 +201,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-12 mt-2 bg-linear-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold text-sm rounded-2xl shadow-lg shadow-sky-600/25 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+              className="w-full h-12 mt-2 bg-linear-to-r from-sky-600 to-sky-800 hover:from-sky-700 hover:to-sky-900 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold text-sm rounded-2xl shadow-lg shadow-sky-700/25 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
             >
               {loading ? (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
