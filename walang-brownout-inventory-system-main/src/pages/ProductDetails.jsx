@@ -1,67 +1,93 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header.jsx';
 import Navbar from '../components/Navbar.jsx';
 import { 
-  ArrowLeft, Edit3, Sliders, ShieldCheck, Clock, 
-  Trash2, X, ShieldAlert, PackageCheck, AlertCircle, Search 
+  ArrowLeft, Edit3, Sliders, 
+  Trash2, X, ShieldAlert, AlertCircle, Search 
 } from 'lucide-react';
+import {
+  abcBadge,
+  classifyABC,
+  getATP,
+  formatTxDate,
+  getCurrentUser,
+  getInventory,
+  getPlanning,
+  getStatus,
+  parseThreshold,
+  readJSON,
+  statusBadge,
+} from '../utils/inventory.js';
+
+/** Reads one product and everything the page shows for it from the saved data. */
+function loadProduct(sku, querySku) {
+  const list = getInventory();
+  const product =
+    list.find((i) => i.sku.toLowerCase() === sku.toLowerCase()) || (!querySku ? list[0] : null) || null;
+
+  if (!product) {
+    return { list, product: null, editForm: {}, stock: {}, logs: [] };
+  }
+
+  const plan = getPlanning(product);
+  const transactions = readJSON('transaction_records_db', []);
+  return {
+    list,
+    product,
+    editForm: {
+      name: product.name || '',
+      price: product.price || '₱ 0.00',
+      category: product.category || 'Generators',
+      supplier: product.supplier || 'PowerPro Heavy Industries Inc.',
+      location: product.location || 'Main Warehouse - Section A4',
+      desc: product.desc || 'No description provided.',
+      threshold: parseThreshold(product.threshold),
+      dailyUsage: plan.dailyUsage,
+      leadTime: plan.leadTime,
+      safetyStock: plan.safetyStock,
+      receivedDate: product.receivedDate || '2026-08-01',
+      expiryDate: product.expiryDate || '2028-08-01',
+    },
+    stock: {
+      onHand: product.onHand || 0,
+      reserved: product.reserved || 0,
+      threshold: parseThreshold(product.threshold),
+      reason: 'Physical Floor Count Verification',
+    },
+    logs: (Array.isArray(transactions) ? transactions : [])
+      .filter((t) => t && t.sku && t.sku.toLowerCase() === product.sku.toLowerCase())
+      .slice(0, 3),
+  };
+}
 
 export default function ProductDetails() {
+  const [searchParams] = useSearchParams();
+  const querySku = searchParams.get('sku');
+  const sku = querySku || getInventory()[0]?.sku || '';
+
+  // The key remounts the page (and reloads its data) whenever another product is opened.
+  return <ProductDetailsView key={sku} sku={sku} querySku={querySku} />;
+}
+
+function ProductDetailsView({ sku, querySku }) {
   const [isNavOpen, setIsNavOpen] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Load Inventory DB first to determine default SKU
-  const [inventoryList, setInventoryList] = useState([]);
-  
-  useEffect(() => {
-    const saved = localStorage.getItem('inventory_db');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setInventoryList(parsed);
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }, []);
-
-  const querySku = searchParams.get('sku');
-  
-  // Determine active SKU: If not in URL, pick the first item in inventory
-  const sku = useMemo(() => {
-    if (querySku) return querySku;
-    if (inventoryList.length > 0 && inventoryList[0]?.sku) {
-      return inventoryList[0].sku;
-    }
-    return 'SKU-8821';
-  }, [querySku, inventoryList]);
-
-  // Role Check & User Session
-  const [currentUser, setCurrentUser] = useState({ name: 'Justin Ralph', role: 'Administrator' });
-  useEffect(() => {
-    const session = localStorage.getItem('current_user');
-    if (session) {
-      try {
-        const parsed = JSON.parse(session);
-        if (parsed.role) setCurrentUser(parsed);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }, []);
-
+  const [initial] = useState(() => loadProduct(sku, querySku));
+  const [inventoryList, setInventoryList] = useState(initial.list);
+  const [currentUser] = useState(getCurrentUser);
   const isWarehouseStaff = currentUser.role === 'Warehouse Staff';
 
   // Product State
-  const [product, setProduct] = useState(null);
-  const [recentLogs, setRecentLogs] = useState([]);
+  const abcMapAll = useMemo(() => classifyABC(inventoryList), [inventoryList]);
+  const [product, setProduct] = useState(initial.product);
+  const [recentLogs, setRecentLogs] = useState(initial.logs);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [editFormData, setEditFormData] = useState(initial.editForm);
+  const [stockAdjustment, setStockAdjustment] = useState(initial.stock);
 
   // Filter products for the search dropdown in the middle
   const filteredProductsForSearch = useMemo(() => {
@@ -73,111 +99,13 @@ export default function ProductDetails() {
     ).slice(0, 5);
   }, [inventoryList, productSearchTerm]);
 
-  // Form States
-  const [editFormData, setEditFormData] = useState({
-    name: '',
-    price: '',
-    category: '',
-    supplier: '',
-    location: '',
-    desc: '',
-    threshold: 5,
-    status: 'In Stock',
-    receivedDate: '2026-08-01',
-    expiryDate: '2028-08-01'
-  });
-
-  const [stockAdjustment, setStockAdjustment] = useState({ 
-    onHand: 0, 
-    available: 0, 
-    reserved: 0, 
-    threshold: 5, 
-    reason: 'Physical Floor Count Verification' 
-  });
-
-  // Load Product Data & Recent Activity Logs strictly from LocalStorage inventory_db
-  useEffect(() => {
-    const saved = localStorage.getItem('inventory_db');
-    let currentProd = null;
-    let invParsed = [];
-
-    if (saved) {
-      try {
-        invParsed = JSON.parse(saved);
-        setInventoryList(invParsed);
-        const found = invParsed.find(item => item && item.sku && item.sku.toLowerCase() === sku.toLowerCase());
-        if (found) {
-          currentProd = found;
-        } else if (invParsed.length > 0 && !querySku) {
-          currentProd = invParsed[0];
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    if (currentProd) {
-      setProduct(currentProd);
-      setEditFormData({
-        name: currentProd.name || '',
-        price: currentProd.price || '₱ 0.00',
-        category: currentProd.category || 'Generators',
-        supplier: currentProd.supplier || 'PowerPro Heavy Industries Inc.',
-        location: currentProd.location || 'Main Warehouse - Section A4',
-        desc: currentProd.desc || 'No description provided.',
-        threshold: currentProd.threshold || 5,
-        status: currentProd.status || 'In Stock',
-        receivedDate: currentProd.receivedDate || '2026-08-01',
-        expiryDate: currentProd.expiryDate || '2028-08-01'
-      });
-
-      setStockAdjustment({ 
-        onHand: currentProd.onHand || 0, 
-        available: currentProd.available || 0, 
-        reserved: currentProd.reserved || 0, 
-        threshold: currentProd.threshold || 5, 
-        reason: 'Physical Floor Count Verification' 
-      });
-
-      // Fetch Recent Activity Logs from transaction_records_db
-      const savedTx = localStorage.getItem('transaction_records_db');
-      if (savedTx) {
-        try {
-          const txList = JSON.parse(savedTx);
-          const filteredTx = txList.filter(t => t && t.sku && t.sku.toLowerCase() === (currentProd.sku || sku).toLowerCase());
-          setRecentLogs(filteredTx.slice(0, 3));
-        } catch (e) {
-          console.error(e);
-        }
-      } else {
-        setRecentLogs([]);
-      }
-    } else {
-      setProduct(null); 
-    }
-  }, [sku, querySku]);
-
   // Sync Changes to LocalStorage and Log Audit Event
   const saveProductAndLog = (updatedProduct, actionType) => {
     setProduct(updatedProduct);
     
-    const saved = localStorage.getItem('inventory_db');
-    let updatedDb = [];
-    if (saved) {
-      try {
-        const db = JSON.parse(saved);
-        const exists = db.some(item => item && item.sku && item.sku.toLowerCase() === updatedProduct.sku.toLowerCase());
-        if (exists) {
-          updatedDb = db.map(item => item && item.sku && item.sku.toLowerCase() === updatedProduct.sku.toLowerCase() ? updatedProduct : item);
-        } else {
-          updatedDb = [updatedProduct, ...db];
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    } else {
-      updatedDb = [updatedProduct];
-    }
+    const db = getInventory();
+    const sameSku = (item) => item.sku.toLowerCase() === updatedProduct.sku.toLowerCase();
+    const updatedDb = db.some(sameSku) ? db.map((item) => (sameSku(item) ? updatedProduct : item)) : [updatedProduct, ...db];
     localStorage.setItem('inventory_db', JSON.stringify(updatedDb));
     setInventoryList(updatedDb);
 
@@ -193,7 +121,7 @@ export default function ProductDetails() {
       type: actionType,
       qty: updatedProduct.onHand,
       user: currentUser.name || 'System User',
-      date: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      date: formatTxDate(),
       status: 'Verified'
     };
 
@@ -209,10 +137,6 @@ export default function ProductDetails() {
       return;
     }
 
-    let badgeClass = 'bg-sky-50 text-sky-800 border-sky-300';
-    if (editFormData.status === 'Low Stock') badgeClass = 'bg-amber-50 text-amber-800 border-amber-300';
-    if (editFormData.status === 'Out of Stock') badgeClass = 'bg-rose-50 text-rose-800 border-rose-300';
-
     const updatedProduct = {
       ...product,
       name: editFormData.name,
@@ -220,13 +144,17 @@ export default function ProductDetails() {
       category: editFormData.category,
       supplier: editFormData.supplier,
       location: editFormData.location,
-      status: editFormData.status,
-      badgeClass: badgeClass,
       receivedDate: editFormData.receivedDate,
       expiryDate: editFormData.expiryDate,
       desc: editFormData.desc,
-      threshold: Number(editFormData.threshold) || 5
+      threshold: Number(editFormData.threshold) || 5,
+      dailyUsage: Number(editFormData.dailyUsage) || 2,
+      leadTime: Number(editFormData.leadTime) || 7,
+      safetyStock: Math.max(Number(editFormData.safetyStock) || 0, 0)
     };
+    // The status always follows the stock level and the low-stock threshold.
+    updatedProduct.status = getStatus(updatedProduct);
+    updatedProduct.badgeClass = statusBadge(updatedProduct.status);
 
     saveProductAndLog(updatedProduct, 'Product Info, Status & Batch Dates Update');
     setIsEditModalOpen(false);
@@ -241,30 +169,18 @@ export default function ProductDetails() {
     }
 
     const newOnHand = Number(stockAdjustment.onHand) || 0;
-    const newAvailable = Number(stockAdjustment.available) || 0;
     const newReserved = Number(stockAdjustment.reserved) || 0;
     const threshold = Number(stockAdjustment.threshold) || 5;
-
-    let newStatus = product.status || 'In Stock';
-    let badgeClass = product.badgeClass || 'bg-sky-50 text-sky-800 border-sky-300';
-    
-    if (newOnHand === 0) {
-      newStatus = 'Out of Stock';
-      badgeClass = 'bg-rose-50 text-rose-800 border-rose-300';
-    } else if (newOnHand <= threshold) {
-      newStatus = 'Low Stock';
-      badgeClass = 'bg-amber-50 text-amber-800 border-amber-300';
-    }
 
     const updatedProduct = { 
       ...product, 
       onHand: newOnHand, 
-      available: newAvailable, 
       reserved: newReserved,
-      threshold: threshold,
-      status: newStatus, 
-      badgeClass 
+      available: Math.max(newOnHand - newReserved, 0),
+      threshold: threshold
     };
+    updatedProduct.status = getStatus(updatedProduct);
+    updatedProduct.badgeClass = statusBadge(updatedProduct.status);
 
     saveProductAndLog(updatedProduct, `Stock Adjusted (${stockAdjustment.reason})`);
     setIsAdjustModalOpen(false);
@@ -278,17 +194,9 @@ export default function ProductDetails() {
     }
 
     if (confirm(`Are you sure you want to delete ${product.name} (${product.sku})? This action will write off the SKU from Master Inventory.`)) {
-      const saved = localStorage.getItem('inventory_db');
-      if (saved) {
-        try {
-          const db = JSON.parse(saved);
-          const filteredDb = db.filter(item => item && item.sku && item.sku.toLowerCase() !== product.sku.toLowerCase());
-          localStorage.setItem('inventory_db', JSON.stringify(filteredDb));
-          setInventoryList(filteredDb);
-        } catch (e) {
-          console.error(e);
-        }
-      }
+      const filteredDb = getInventory().filter((item) => item.sku.toLowerCase() !== product.sku.toLowerCase());
+      localStorage.setItem('inventory_db', JSON.stringify(filteredDb));
+      setInventoryList(filteredDb);
 
       alert('Product removed from Master Inventory.');
       navigate('/inventory');
@@ -301,10 +209,12 @@ export default function ProductDetails() {
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return dateStr;
       return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-    } catch (e) {
+    } catch {
       return dateStr;
     }
   };
+
+  const abcClass = product ? abcMapAll[product.sku]?.class || 'C' : 'C';
 
   // If product is deleted or not found in LocalStorage
   if (!product || inventoryList.length === 0) {
@@ -403,8 +313,8 @@ export default function ProductDetails() {
           <div className="lg:col-span-6 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
             <h2 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-3 flex items-center justify-between">
               <span>PRODUCT INFORMATION</span>
-              <span className={`inline-block border font-black px-2.5 py-0.5 rounded-full text-[10px] ${product.badgeClass || 'bg-sky-50 text-sky-800 border-sky-300'}`}>
-                {product.status || 'In Stock'}
+              <span className={`inline-block border font-black px-2.5 py-0.5 rounded-full text-[10px] ${statusBadge(getStatus(product))}`}>
+                {getStatus(product)}
               </span>
             </h2>
 
@@ -474,18 +384,33 @@ export default function ProductDetails() {
                 </div>
 
                 <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl text-center">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">AVAILABLE STOCK</p>
-                  <p className="text-2xl font-black text-slate-900 mt-1">{product.available}</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">AVAILABLE TO PROMISE</p>
+                  <p className="text-2xl font-black text-slate-900 mt-1">{getATP(product)}</p>
                 </div>
 
                 <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl text-center">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">RESERVED / COMMITTED</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ALLOCATED STOCK</p>
                   <p className="text-2xl font-black text-slate-900 mt-1">{product.reserved || 0}</p>
                 </div>
 
                 <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl text-center">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">REORDER THRESHOLD</p>
-                  <p className="text-2xl font-black text-amber-700 mt-1">{product.threshold || 5} Units</p>
+                  <p className="text-2xl font-black text-amber-700 mt-1">{parseThreshold(product.threshold)} Units</p>
+                </div>
+
+                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl text-center">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">REORDER POINT</p>
+                  <p className="text-2xl font-black text-slate-900 mt-1">{getPlanning(product).reorderPoint} Units</p>
+                  <p className="text-[10px] font-semibold text-slate-500 mt-0.5">
+                    {getPlanning(product).dailyUsage}/day × {getPlanning(product).leadTime} days + {getPlanning(product).safetyStock} safety
+                  </p>
+                </div>
+
+                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl text-center">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ABC CLASS</p>
+                  <p className="mt-2">
+                    <span className={`inline-block border font-black px-3 py-1 rounded-full text-xs ${abcBadge(abcClass)}`}>Class {abcClass}</span>
+                  </p>
                 </div>
               </div>
 
@@ -603,15 +528,7 @@ export default function ProductDetails() {
 
                 <div>
                   <label className="block mb-1 uppercase text-[10px] font-black text-sky-700">Product Status</label>
-                  <select 
-                    value={editFormData.status} 
-                    onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })} 
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
-                  >
-                    <option value="In Stock">In Stock</option>
-                    <option value="Low Stock">Low Stock</option>
-                    <option value="Out of Stock">Out of Stock</option>
-                  </select>
+                  <p className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-semibold">Set automatically from stock level</p>
                 </div>
               </div>
 
@@ -657,6 +574,27 @@ export default function ProductDetails() {
                 />
               </div>
 
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block mb-1 uppercase text-[10px] font-black">Daily Demand</label>
+                  <input type="number" min="0" value={editFormData.dailyUsage}
+                    onChange={(e) => setEditFormData({ ...editFormData, dailyUsage: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                </div>
+                <div>
+                  <label className="block mb-1 uppercase text-[10px] font-black">Lead Time (days)</label>
+                  <input type="number" min="0" value={editFormData.leadTime}
+                    onChange={(e) => setEditFormData({ ...editFormData, leadTime: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                </div>
+                <div>
+                  <label className="block mb-1 uppercase text-[10px] font-black">Safety Stock</label>
+                  <input type="number" min="0" value={editFormData.safetyStock}
+                    onChange={(e) => setEditFormData({ ...editFormData, safetyStock: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                </div>
+              </div>
+
               <div>
                 <label className="block mb-1 uppercase text-[10px] font-black">Description</label>
                 <textarea 
@@ -697,28 +635,16 @@ export default function ProductDetails() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block mb-1 uppercase text-[10px] font-black">Available Stock</label>
-                  <input 
-                    type="number" 
-                    min="0"
-                    value={stockAdjustment.available} 
-                    onChange={(e) => setStockAdjustment({ ...stockAdjustment, available: e.target.value })} 
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold" 
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-1 uppercase text-[10px] font-black">Reserved Stock</label>
-                  <input 
-                    type="number" 
-                    min="0"
-                    value={stockAdjustment.reserved} 
-                    onChange={(e) => setStockAdjustment({ ...stockAdjustment, reserved: e.target.value })} 
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold" 
-                  />
-                </div>
+              <div>
+                <label className="block mb-1 uppercase text-[10px] font-black">Allocated Stock (reserved for orders)</label>
+                <input 
+                  type="number" 
+                  min="0"
+                  value={stockAdjustment.reserved} 
+                  onChange={(e) => setStockAdjustment({ ...stockAdjustment, reserved: e.target.value })} 
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold" 
+                />
+                <p className="mt-1 text-[10px] font-medium text-slate-500">Available to promise = on hand minus allocated.</p>
               </div>
 
               <div>

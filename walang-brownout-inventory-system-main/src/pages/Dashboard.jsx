@@ -1,153 +1,204 @@
-import React from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Package, AlertTriangle, ShieldAlert, Clock, ArrowRight, Layers } from 'lucide-react';
+import Header from '../components/Header.jsx';
+import Navbar from '../components/Navbar.jsx';
+import {
+  classifyABC,
+  abcBadge,
+  getCurrentUser,
+  getInventory,
+  getPlanning,
+  isActive,
+  loadAlerts,
+  needsReorder,
+} from '../utils/inventory.js';
 
-import { Link, useLocation } from 'react-router-dom';
+const TONES = {
+  teal: { tile: 'from-teal-500 to-cyan-700', value: 'text-slate-900', hint: 'bg-cyan-100 text-cyan-900' },
+  amber: { tile: 'from-amber-400 to-orange-500', value: 'text-amber-700', hint: 'bg-amber-100 text-amber-900' },
+  rose: { tile: 'from-rose-500 to-pink-600', value: 'text-rose-600', hint: 'bg-rose-100 text-rose-900' },
+  slate: { tile: 'from-slate-500 to-slate-700', value: 'text-slate-900', hint: 'bg-slate-200 text-slate-800' },
+};
 
-import { 
+const PRIORITY_BADGE = {
+  Critical: 'bg-rose-50 text-rose-700 ring-rose-200',
+  Warning: 'bg-amber-50 text-amber-700 ring-amber-200',
+  Pending: 'bg-sky-50 text-sky-700 ring-sky-200',
+};
+const PRIORITY_DOT = { Critical: 'bg-rose-500', Warning: 'bg-amber-500', Pending: 'bg-sky-500' };
 
-  LayoutDashboard, 
+function KpiCard({ label, value, hint, icon: Icon, tone }) {
+  const t = TONES[tone];
+  return (
+    <div className="kpi-card p-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium text-slate-700">{label}</p>
+          <p className={`mt-2 text-4xl font-extrabold tracking-tight ${t.value}`}>{value}</p>
+        </div>
+        <div className={`rounded-xl bg-linear-to-br p-3 text-white shadow-md ${t.tile}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+      <span className={`mt-4 inline-block rounded-full px-2.5 py-1 text-[11px] font-semibold ${t.hint}`}>{hint}</span>
+    </div>
+  );
+}
 
-  Package, 
+// Everything on this page is calculated from the saved inventory, batches and alerts.
+function readSnapshot() {
+  const inventory = getInventory();
+  return { inventory, alerts: loadAlerts() };
+}
 
-  RefreshCw, 
+export default function Dashboard() {
+  const [isNavOpen, setIsNavOpen] = useState(false);
+  const [snapshot, setSnapshot] = useState(readSnapshot);
+  const [user] = useState(getCurrentUser);
 
-  BarChart3, 
+  // Refresh when another tab or page changes the data.
+  useEffect(() => {
+    const refresh = () => setSnapshot(readSnapshot());
+    window.addEventListener('storage', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.removeEventListener('storage', refresh);
+      window.removeEventListener('focus', refresh);
+    };
+  }, []);
 
-  Users, 
+  const { inventory, alerts } = snapshot;
+  const activeAlerts = useMemo(() => alerts.filter(isActive), [alerts]);
 
-  Bell, 
+  const kpi = useMemo(() => {
+    const count = (types) => activeAlerts.filter((a) => types.includes(a.type)).length;
+    return {
+      total: inventory.length,
+      low: count(['Low Stock']),
+      out: count(['Out of Stock']),
+      expiring: count(['Expiring Soon', 'Expired']),
+    };
+  }, [inventory, activeAlerts]);
 
-  ShieldAlert,
+  const reorderList = useMemo(() => {
+    const abc = classifyABC(inventory);
+    return inventory
+      .filter(needsReorder)
+      .map((item) => ({ item, abc: abc[item.sku]?.class || 'C', rop: getPlanning(item).reorderPoint }))
+      .sort((a, b) => a.abc.localeCompare(b.abc) || Number(a.item.onHand) - Number(b.item.onHand))
+      .slice(0, 5);
+  }, [inventory]);
 
-  ClipboardList,
-
-  Layers
-
-} from 'lucide-react';
-
-
-
-export default function Sidebar() {
-
-  const location = useLocation();
-
-
-
-  const navItems = [
-
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-
-    { path: '/inventory', label: 'Inventory Items', icon: Package },
-
-    { path: '/fifo', label: 'FIFO Tracking', icon: RefreshCw },
-
-    { path: '/reorder', label: 'Reorder Planner', icon: Layers },
-
-    { path: '/transactions', label: 'Transaction Logs', icon: ClipboardList },
-
-    { path: '/reports', label: 'Reports', icon: BarChart3 },
-
-    { path: '/users', label: 'User Management', icon: Users },
-
-    { path: '/alerts', label: 'System Alerts', icon: Bell },
-
-  ];
-
-
+  const firstName = (user.name || 'there').trim().split(' ')[0];
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
   return (
+    <div className="bg-slate-100 text-slate-900 font-sans antialiased min-h-screen flex flex-col w-full">
+      <Navbar isOpen={isNavOpen} onClose={() => setIsNavOpen(false)} />
+      <Header title="Dashboard" onMenuOpen={() => setIsNavOpen(true)} />
 
-    <aside className="w-72 h-screen bg-white border-r border-slate-200 flex flex-col fixed left-0 top-0 z-50 shadow-sm">
+      <main className="mx-auto w-full max-w-[1400px] flex-1 space-y-5 px-4 py-4 sm:px-6 lg:px-10">
+        {/* Welcome banner */}
+        <section className="hero-card p-6 sm:p-7 text-white">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs text-slate-300">{today}</p>
+              <h1 className="mt-1 text-3xl font-bold tracking-tight text-white">Welcome back, {firstName}</h1>
+              <p className="mt-1 text-sm text-slate-300">Stock levels, open alerts and demand at a glance.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link to="/inventory" className="rounded-lg border border-cyan-400/30 bg-cyan-500/20 px-3.5 py-2 text-sm font-semibold text-cyan-50 hover:bg-cyan-500/30">
+                {kpi.total} products
+              </Link>
+              <Link to="/alerts" className="rounded-lg border border-amber-300/40 bg-linear-to-r from-amber-500/60 to-orange-500/60 px-3.5 py-2 text-sm font-semibold text-white hover:brightness-110">
+                {activeAlerts.length} open alerts
+              </Link>
+            </div>
+          </div>
+        </section>
 
-      {/* Brand Header */}
+        {/* Key numbers */}
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <KpiCard label="Total Products" value={kpi.total} hint="Active SKUs cataloged" icon={Package} tone="teal" />
+          <KpiCard label="Low Stock Alert" value={kpi.low} hint="Below minimum safety level" icon={AlertTriangle} tone="amber" />
+          <KpiCard label="Out of Stock" value={kpi.out} hint="Urgent replenishment required" icon={ShieldAlert} tone="rose" />
+          <KpiCard label="Expiring Items" value={kpi.expiring} hint={`Batches expiring within 90 days`} icon={Clock} tone="slate" />
+        </section>
 
-      <div className="p-6 flex items-center gap-3 border-b border-slate-100">
+        {/* Alerts + reorder watch */}
+        <section className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+          <div className="flex flex-col rounded-2xl bg-white p-5 lg:col-span-7">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="rounded-lg bg-slate-100 p-2 text-slate-700">
+                  <ShieldAlert className="h-4 w-4" />
+                </div>
+                <h2 className="text-base font-bold">System Alerts</h2>
+              </div>
+              <Link to="/alerts" className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200">
+                {activeAlerts.length} Active <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
 
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-md shadow-sky-500/20">
+            <div className="mt-4 flex-1 space-y-2.5">
+              {activeAlerts.length > 0 ? (
+                activeAlerts.slice(0, 5).map((alert) => (
+                  <div key={alert.id} className="flex items-center justify-between gap-3 rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200/70">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${PRIORITY_DOT[alert.priority] || 'bg-slate-400'}`} />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">{alert.item}</p>
+                        <p className="truncate text-xs text-slate-600">{alert.details}</p>
+                      </div>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${PRIORITY_BADGE[alert.priority] || 'bg-slate-100 text-slate-700 ring-slate-200'}`}>
+                      {alert.priority}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="py-10 text-center text-sm font-medium text-slate-500">All alerts are resolved. Nothing needs attention.</div>
+              )}
+            </div>
 
-          <ShieldAlert className="w-5 h-5 text-white" />
-
-        </div>
-
-        <div>
-
-          <h1 className="font-bold tracking-tight text-slate-900 text-sm">Walang-Brownout</h1>
-
-          <span className="text-xs text-sky-600 font-medium">Inventory System</span>
-
-        </div>
-
-      </div>
-
-
-
-      {/* Navigation List */}
-
-      <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-
-        {navItems.map((item) => {
-
-          const Icon = item.icon;
-
-          const isActive = location.pathname === item.path;
-
-          return (
-
-            <Link
-
-              key={item.path}
-
-              to={item.path}
-
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150 ${
-
-                isActive
-
-                  ? 'bg-sky-50 text-sky-700 font-semibold shadow-sm border border-sky-100'
-
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-
-              }`}
-
-            >
-
-              <Icon className={`w-4 h-4 ${isActive ? 'text-sky-600' : 'text-slate-400'}`} />
-
-              {item.label}
-
+            <Link to="/alerts" className="mt-4 border-t border-slate-200 pt-4 text-center text-sm font-semibold text-slate-800 hover:text-sky-700">
+              Manage System Alerts →
             </Link>
+          </div>
 
-          );
+          <div className="flex flex-col rounded-2xl bg-white p-5 lg:col-span-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="rounded-lg bg-slate-100 p-2 text-slate-700">
+                  <Layers className="h-4 w-4" />
+                </div>
+                <h2 className="text-base font-bold">Reorder Watch</h2>
+              </div>
+              <Link to="/reorder-planner" className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200">
+                Open planner <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <p className="mt-1 text-xs text-slate-600">Items at or below their reorder point, most important class first.</p>
 
-        })}
-
-      </nav>
-
-
-
-      {/* Power Status Footer Widget */}
-
-      <div className="p-4 m-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-
-        <div className="flex items-center justify-between mb-2">
-
-          <span className="text-xs font-medium text-slate-500">Power Stability</span>
-
-          <span className="flex h-2 w-2 relative">
-
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-
-          </span>
-
-        </div>
-
-        <p className="text-xs font-semibold text-emerald-600">Backup Generation Ready</p>
-
-      </div>
-
-    </aside>
-
+            <div className="mt-4 flex-1 space-y-2.5">
+              {reorderList.length > 0 ? (
+                reorderList.map(({ item, abc, rop }) => (
+                  <div key={item.sku} className="flex items-center justify-between gap-3 rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200/70">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900">{item.name}</p>
+                      <p className="text-xs text-slate-600">{item.onHand} on hand · reorder at {rop}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${abcBadge(abc)}`}>Class {abc}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="py-10 text-center text-sm font-medium text-slate-500">Every item is above its reorder point.</div>
+              )}
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
   );
-
-} 
+}

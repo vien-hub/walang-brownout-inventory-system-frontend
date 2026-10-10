@@ -1,26 +1,26 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import Header from '../components/Header.jsx';
 import Navbar from '../components/Navbar.jsx';
 import { Plus, Search, ChevronLeft, ChevronRight, Eye, X, PackagePlus, ShieldAlert } from 'lucide-react';
+import {
+  DEFAULT_INVENTORY,
+  abcBadge,
+  classifyABC,
+  formatPeso,
+  getATP,
+  getBatchesDb,
+  getCurrentUser,
+  getExpiryInfo,
+  getStatus,
+  statusBadge,
+} from '../utils/inventory.js';
 
 export default function Inventory() {
   const [isNavOpen, setIsNavOpen] = useState(false);
-  const navigate = useNavigate();
 
   // Role Check
-  const [userRole, setUserRole] = useState('Administrator');
-  useEffect(() => {
-    const session = localStorage.getItem('current_user');
-    if (session) {
-      try {
-        const parsed = JSON.parse(session);
-        if (parsed.role) setUserRole(parsed.role);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }, []);
+  const [userRole] = useState(() => getCurrentUser().role);
 
   const isWarehouseStaff = userRole === 'Warehouse Staff';
 
@@ -35,27 +35,25 @@ export default function Inventory() {
 
   // Add Product Modal State (Including receivedDate and expiryDate)
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newProduct, setNewProduct] = useState({
+  const emptyProduct = () => ({
     sku: '',
     name: '',
     category: 'Generators',
+    price: '',
+    supplier: '',
     onHand: '',
-    available: '',
+    reserved: '',
+    threshold: '5',
+    dailyUsage: '2',
+    leadTime: '7',
+    safetyStock: '5',
     location: '',
-    status: 'In Stock',
     receivedDate: new Date().toISOString().slice(0, 10),
-    expiryDate: new Date(Date.now() + 730 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    expiryDate: new Date(Date.now() + 730 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
   });
+  const [newProduct, setNewProduct] = useState(emptyProduct);
 
-  // Default Master Inventory Dataset
-  const defaultInventory = [
-    { sku: 'SKU-8821', name: 'Inverter Generator 3kVA', fullName: 'Inverter Generator 3kVA (Silent Series)', category: 'Generators', price: '₱ 24,500.00', supplier: 'PowerPro Heavy Industries Inc.', desc: 'High-efficiency 3000W portable inverter generator.', onHand: 18, available: 15, reserved: 3, threshold: '5 Units', location: 'Warehouse A', status: 'In Stock', badgeClass: 'bg-sky-50 text-sky-800 border-sky-300', receivedDate: '2026-08-01', expiryDate: '2028-08-01' },
-    { sku: 'SKU-4102', name: 'Solar Charge Controller 60A', fullName: 'MPPT Solar Charge Controller 60A 12V/24V/48V', category: 'Solar Systems', price: '₱ 8,200.00', supplier: 'SolarTech Energy Supplies', desc: 'Advanced MPPT controller with 99% tracking efficiency.', onHand: 3, available: 2, reserved: 1, threshold: '5 Units', location: 'Shelf B-3', status: 'Low Stock', badgeClass: 'bg-amber-50 text-amber-800 border-amber-300', receivedDate: '2026-08-05', expiryDate: '2028-08-05' },
-    { sku: 'SKU-9011', name: 'LiFePO4 100Ah Battery Pack', fullName: 'Lithium Iron Phosphate Battery 12.8V 100Ah', category: 'Batteries', price: '₱ 19,800.00', supplier: 'Voltaic Power Corp.', desc: 'Deep cycle lithium battery with integrated Smart BMS.', onHand: 0, available: 0, reserved: 0, threshold: '10 Units', location: 'Warehouse B', status: 'Out of Stock', badgeClass: 'bg-rose-50 text-rose-800 border-rose-300', receivedDate: '2026-08-10', expiryDate: '2028-08-10' },
-    { sku: 'SKU-1044', name: 'Automatic Transfer Switch 100A', fullName: 'Dual Power Automatic Transfer Switch 100A 220V', category: 'Switches', price: '₱ 4,500.00', supplier: 'GridGuard Switchgears', desc: 'Seamless automatic transfer switch.', onHand: 25, available: 22, reserved: 3, threshold: '8 Units', location: 'Shelf A-1', status: 'In Stock', badgeClass: 'bg-sky-50 text-sky-800 border-sky-300', receivedDate: '2026-08-12', expiryDate: '2028-08-12' },
-    { sku: 'SKU-3092', name: 'Monocrystalline Solar Panel 450W', fullName: 'High-Efficiency Monocrystalline Solar Panel 450W', category: 'Solar Systems', price: '₱ 7,400.00', supplier: 'SolarTech Energy Supplies', desc: 'PERC half-cut cell solar module.', onHand: 42, available: 40, reserved: 2, threshold: '15 Units', location: 'Yard Storage', status: 'In Stock', badgeClass: 'bg-sky-50 text-sky-800 border-sky-300', receivedDate: '2026-08-15', expiryDate: '2028-08-15' },
-    { sku: 'SKU-5201', name: 'Deep Cycle Gel Battery 200Ah', fullName: 'Sealed Lead Acid Gel Deep Cycle Battery 12V 200Ah', category: 'Batteries', price: '₱ 14,200.00', supplier: 'Voltaic Power Corp.', desc: 'Maintenance-free gel battery.', onHand: 5, available: 4, reserved: 1, threshold: '6 Units', location: 'Shelf B-1', status: 'Low Stock', badgeClass: 'bg-amber-50 text-amber-800 border-amber-300', receivedDate: '2026-08-18', expiryDate: '2028-08-18' },
-  ];
+
 
   // Load from localStorage or initialize defaults
   const [inventoryData, setInventoryData] = useState(() => {
@@ -68,7 +66,7 @@ export default function Inventory() {
         console.error(e);
       }
     }
-    return defaultInventory;
+    return DEFAULT_INVENTORY;
   });
 
   // Sync dataset changes to localStorage & update FIFO batches database
@@ -88,7 +86,7 @@ export default function Inventory() {
             const d = new Date(dateStr);
             if (isNaN(d.getTime())) return dateStr;
             return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-          } catch (e) {
+          } catch {
             return dateStr;
           }
         };
@@ -121,7 +119,7 @@ export default function Inventory() {
       const name = item?.name || '';
       const location = item?.location || '';
       const category = item?.category || '';
-      const status = item?.status || '';
+      const status = getStatus(item || {});
 
       const matchesSearch = 
         sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -154,45 +152,50 @@ export default function Inventory() {
       return;
     }
 
-    if (!newProduct.sku || !newProduct.name) {
+    if (!newProduct.sku.trim() || !newProduct.name.trim()) {
       alert('Please fill out the required SKU and Product Name.');
       return;
     }
 
-    let badgeClass = 'bg-sky-50 text-sky-800 border-sky-300';
-    if (newProduct.status === 'Low Stock') badgeClass = 'bg-amber-50 text-amber-800 border-amber-300';
-    if (newProduct.status === 'Out of Stock') badgeClass = 'bg-rose-50 text-rose-800 border-rose-300';
+    const sku = newProduct.sku.trim().toUpperCase();
+    if (inventoryData.some((i) => i.sku.toLowerCase() === sku.toLowerCase())) {
+      alert(`SKU ${sku} already exists. Each product needs a unique SKU.`);
+      return;
+    }
+
+    const onHand = Math.max(Number(newProduct.onHand) || 0, 0);
+    const reserved = Math.min(Math.max(Number(newProduct.reserved) || 0, 0), onHand);
 
     const createdItem = {
-      ...newProduct,
-      fullName: newProduct.name,
-      price: '₱ 12,500.00',
-      supplier: 'Generic Power Supplies',
-      desc: 'Custom inventory item created via system management dashboard.',
-      reserved: 0,
-      threshold: '5 Units',
-      onHand: Number(newProduct.onHand) || 0,
-      available: Number(newProduct.available) || 0,
-      badgeClass,
+      sku,
+      name: newProduct.name.trim(),
+      fullName: newProduct.name.trim(),
+      category: newProduct.category,
+      price: formatPeso(newProduct.price),
+      supplier: newProduct.supplier.trim() || 'Unassigned supplier',
+      desc: 'Added from the inventory page.',
+      location: newProduct.location.trim() || 'Warehouse Main',
+      onHand,
+      reserved,
+      available: onHand - reserved,
+      threshold: Number(newProduct.threshold) || 5,
+      dailyUsage: Number(newProduct.dailyUsage) || 2,
+      leadTime: Number(newProduct.leadTime) || 7,
+      safetyStock: Number(newProduct.safetyStock) || 0,
       receivedDate: newProduct.receivedDate,
-      expiryDate: newProduct.expiryDate
+      expiryDate: newProduct.expiryDate,
     };
+    createdItem.status = getStatus(createdItem);
+    createdItem.badgeClass = statusBadge(createdItem.status);
 
     setInventoryData(prev => [createdItem, ...prev]);
     setIsModalOpen(false);
-    setNewProduct({
-      sku: '',
-      name: '',
-      category: 'Generators',
-      onHand: '',
-      available: '',
-      location: '',
-      status: 'In Stock',
-      receivedDate: new Date().toISOString().slice(0, 10),
-      expiryDate: new Date(Date.now() + 730 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-    });
-    alert(`Product ${createdItem.sku} added successfully to LocalStorage!`);
+    setNewProduct(emptyProduct());
   };
+
+  // ABC class of every product (by annual usage value) and batch data for expiry checks
+  const abcMap = useMemo(() => classifyABC(inventoryData), [inventoryData]);
+  const batchesDb = getBatchesDb();
 
   return (
     <div className="bg-slate-100 text-slate-900 font-sans antialiased min-h-screen flex flex-col overflow-x-hidden w-full">
@@ -294,14 +297,17 @@ export default function Inventory() {
         {/* Table */}
         <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
           <div className="overflow-x-auto w-full">
-            <table className="w-full text-left border-collapse min-w-[700px]">
+            <table className="w-full text-left border-collapse min-w-[980px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 uppercase text-[10px] font-black tracking-wider">
                   <th className="py-3.5 px-4">SKU</th>
                   <th className="py-3.5 px-4">Product Name</th>
                   <th className="py-3.5 px-4">Category</th>
+                  <th className="py-3.5 px-4 text-center">ABC</th>
                   <th className="py-3.5 px-4 text-center">On Hand</th>
-                  <th className="py-3.5 px-4 text-center">Available</th>
+                  <th className="py-3.5 px-4 text-center">Allocated</th>
+                  <th className="py-3.5 px-4 text-center">Available (ATP)</th>
+                  <th className="py-3.5 px-4">Expiry</th>
                   <th className="py-3.5 px-4">Location</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4 text-center">Actions</th>
@@ -309,17 +315,32 @@ export default function Inventory() {
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-semibold">
                 {paginatedProducts.length > 0 ? (
-                  paginatedProducts.map((item) => (
+                  paginatedProducts.map((item) => {
+                    const status = getStatus(item);
+                    const abc = abcMap[item.sku]?.class || 'C';
+                    const expiry = getExpiryInfo(item, batchesDb);
+                    return (
                     <tr key={item.sku} className="hover:bg-sky-50/40 transition">
                       <td className="py-3.5 px-4 font-mono font-black text-sky-700">{item.sku}</td>
                       <td className="py-3.5 px-4 font-black text-slate-900">{item.name}</td>
                       <td className="py-3.5 px-4 text-slate-600">{item.category}</td>
+                      <td className="py-3.5 px-4 text-center">
+                        <span className={`inline-block border font-black px-2.5 py-0.5 rounded-full text-[10px] ${abcBadge(abc)}`}>{abc}</span>
+                      </td>
                       <td className="py-3.5 px-4 text-center font-bold text-slate-700">{item.onHand}</td>
-                      <td className="py-3.5 px-4 text-center font-black text-slate-900">{item.available}</td>
+                      <td className="py-3.5 px-4 text-center text-slate-600">{Number(item.reserved) || 0}</td>
+                      <td className="py-3.5 px-4 text-center font-black text-slate-900">{getATP(item)}</td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {expiry.state === 'expired' && <span className="font-bold text-rose-700">Expired</span>}
+                        {expiry.state === 'expiring' && <span className="font-bold text-amber-700">{expiry.days} days left</span>}
+                        {expiry.state !== 'expired' && expiry.state !== 'expiring' && (
+                          <span className="text-slate-500">{item.expiryDate || 'N/A'}</span>
+                        )}
+                      </td>
                       <td className="py-3.5 px-4 text-slate-600">{item.location}</td>
                       <td className="py-3.5 px-4">
-                        <span className={`inline-block border font-black px-2.5 py-0.5 rounded-full text-[10px] ${item.badgeClass}`}>
-                          {item.status}
+                        <span className={`inline-block border font-black px-2.5 py-0.5 rounded-full text-[10px] ${statusBadge(status)}`}>
+                          {status}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-center">
@@ -332,10 +353,11 @@ export default function Inventory() {
                         </Link>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 ) : (
                   <tr>
-                    <td colSpan="8" className="py-8 text-center text-xs font-bold text-slate-400">
+                    <td colSpan="11" className="py-8 text-center text-xs font-bold text-slate-400">
                       No products found matching your search and filter criteria.
                     </td>
                   </tr>
@@ -388,7 +410,7 @@ export default function Inventory() {
       {/* ADD PRODUCT MODAL (Restricted to non-Warehouse Staff) */}
       {isModalOpen && !isWarehouseStaff && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2">
                 <PackagePlus className="w-5 h-5 text-sky-600" />
@@ -440,40 +462,60 @@ export default function Inventory() {
                 </div>
 
                 <div>
-                  <label className="block mb-1 uppercase tracking-wider text-[10px] font-black">Status</label>
-                  <select 
-                    value={newProduct.status}
-                    onChange={(e) => setNewProduct({ ...newProduct, status: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
-                  >
-                    <option value="In Stock">In Stock</option>
-                    <option value="Low Stock">Low Stock</option>
-                    <option value="Out of Stock">Out of Stock</option>
-                  </select>
+                  <label className="block mb-1 uppercase tracking-wider text-[10px] font-black">Unit Price (₱)</label>
+                  <input type="number" min="0" step="0.01" placeholder="12500" value={newProduct.price}
+                    onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block mb-1 uppercase tracking-wider text-[10px] font-black">Supplier</label>
+                <input type="text" placeholder="e.g. SolarTech Energy Supplies" value={newProduct.supplier}
+                  onChange={(e) => setNewProduct({ ...newProduct, supplier: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block mb-1 uppercase tracking-wider text-[10px] font-black">On Hand Qty</label>
-                  <input 
-                    type="number" 
-                    placeholder="10"
-                    value={newProduct.onHand}
+                  <input type="number" min="0" placeholder="10" value={newProduct.onHand}
                     onChange={(e) => setNewProduct({ ...newProduct, onHand: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold"
-                  />
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold" />
                 </div>
-
                 <div>
-                  <label className="block mb-1 uppercase tracking-wider text-[10px] font-black">Available Qty</label>
-                  <input 
-                    type="number" 
-                    placeholder="10"
-                    value={newProduct.available}
-                    onChange={(e) => setNewProduct({ ...newProduct, available: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold"
-                  />
+                  <label className="block mb-1 uppercase tracking-wider text-[10px] font-black">Allocated</label>
+                  <input type="number" min="0" placeholder="0" value={newProduct.reserved}
+                    onChange={(e) => setNewProduct({ ...newProduct, reserved: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold" />
+                </div>
+                <div>
+                  <label className="block mb-1 uppercase tracking-wider text-[10px] font-black">Low Stock At</label>
+                  <input type="number" min="0" placeholder="5" value={newProduct.threshold}
+                    onChange={(e) => setNewProduct({ ...newProduct, threshold: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold" />
+                </div>
+              </div>
+
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 pt-1">Reorder point inputs</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block mb-1 uppercase tracking-wider text-[10px] font-black">Daily Demand</label>
+                  <input type="number" min="0" placeholder="2" value={newProduct.dailyUsage}
+                    onChange={(e) => setNewProduct({ ...newProduct, dailyUsage: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold" />
+                </div>
+                <div>
+                  <label className="block mb-1 uppercase tracking-wider text-[10px] font-black">Lead Time (days)</label>
+                  <input type="number" min="0" placeholder="7" value={newProduct.leadTime}
+                    onChange={(e) => setNewProduct({ ...newProduct, leadTime: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold" />
+                </div>
+                <div>
+                  <label className="block mb-1 uppercase tracking-wider text-[10px] font-black">Safety Stock</label>
+                  <input type="number" min="0" placeholder="5" value={newProduct.safetyStock}
+                    onChange={(e) => setNewProduct({ ...newProduct, safetyStock: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold" />
                 </div>
               </div>
 

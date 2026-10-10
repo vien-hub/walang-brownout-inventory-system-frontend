@@ -1,27 +1,17 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Header from '../components/Header.jsx';
 import Navbar from '../components/Navbar.jsx';
+import { getCurrentUser } from '../utils/inventory.js';
 import { 
   Search, ArrowUpRight, ArrowDownLeft, ShieldAlert, 
-  ChevronLeft, ChevronRight, FileSpreadsheet, Filter, X, Trash2 
+  ChevronLeft, ChevronRight, FileSpreadsheet, X, Trash2 
 } from 'lucide-react';
 
 export default function TransactionRecords() {
   const [isNavOpen, setIsNavOpen] = useState(false);
 
   // Role Check
-  const [userRole, setUserRole] = useState('Administrator');
-  useEffect(() => {
-    const session = localStorage.getItem('current_user');
-    if (session) {
-      try {
-        const parsed = JSON.parse(session);
-        if (parsed.role) setUserRole(parsed.role);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }, []);
+  const [userRole] = useState(() => getCurrentUser().role);
 
   const isWarehouseStaff = userRole === 'Warehouse Staff';
 

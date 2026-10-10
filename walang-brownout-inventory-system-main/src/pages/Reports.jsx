@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '../components/Header.jsx';
 import Navbar from '../components/Navbar.jsx';
+import { getCurrentUser } from '../utils/inventory.js';
 import { 
   FileText, CheckCircle2, RotateCcw, Download, 
   Filter, Loader2, ShieldAlert, History, Trash2 
@@ -11,18 +12,7 @@ export default function Reports() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Role Check
-  const [userRole, setUserRole] = useState('Administrator');
-  useEffect(() => {
-    const session = localStorage.getItem('current_user');
-    if (session) {
-      try {
-        const parsed = JSON.parse(session);
-        if (parsed.role) setUserRole(parsed.role);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }, []);
+  const [userRole] = useState(() => getCurrentUser().role);
 
   const isWarehouseStaff = userRole === 'Warehouse Staff';
 

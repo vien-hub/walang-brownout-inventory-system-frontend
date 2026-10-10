@@ -1,34 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Header from '../components/Header.jsx';
 import Navbar from '../components/Navbar.jsx';
 import { 
-  ShoppingCart, AlertTriangle, CheckCircle2, 
   ShieldAlert, Printer, PackageCheck, Trash2, 
   ChevronLeft, ChevronRight, AlertCircle 
 } from 'lucide-react';
+import {
+  abcBadge,
+  classifyABC,
+  formatPeso,
+  getATP,
+  getCurrentUser,
+  getInventory,
+  getPlanning,
+  parsePrice,
+} from '../utils/inventory.js';
 
 export default function ReorderPlanner() {
   const [isNavOpen, setIsNavOpen] = useState(false);
 
-  // Role Check & Active User Session
-  const [currentUser, setCurrentUser] = useState({ name: 'Justin Ralph', role: 'Administrator' });
-  useEffect(() => {
-    const session = localStorage.getItem('current_user');
-    if (session) {
-      try {
-        const parsed = JSON.parse(session);
-        if (parsed.role) setCurrentUser(parsed);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }, []);
+  const [currentUser] = useState(getCurrentUser);
 
   const isWarehouseStaff = currentUser.role === 'Warehouse Staff';
 
-  // State synced directly with localStorage inventory_db without force-injecting deleted products
-  const [inventoryList, setInventoryList] = useState([]);
-  const [selectedSku, setSelectedSku] = useState('');
+  // Inventory comes from the saved list; each item carries its own demand, lead time and safety stock.
+  const [inventoryList] = useState(getInventory);
+  const [selectedSku, setSelectedSku] = useState(() => getInventory()[0]?.sku || '');
+  const abcMap = useMemo(() => classifyABC(inventoryList), [inventoryList]);
 
   // Purchase Order History Database in localStorage
   const [purchaseOrders, setPurchaseOrders] = useState(() => {
@@ -54,52 +52,24 @@ export default function ReorderPlanner() {
     localStorage.setItem('purchase_orders_db', JSON.stringify(purchaseOrders));
   }, [purchaseOrders]);
 
-  // Load Inventory Data safely
-  useEffect(() => {
-    const savedInv = localStorage.getItem('inventory_db');
-    let invParsed = [];
-    if (savedInv) {
-      try {
-        const parsed = JSON.parse(savedInv);
-        if (Array.isArray(parsed)) {
-          invParsed = parsed.map(item => ({
-            ...item,
-            dailyUsage: item.dailyUsage || (item.sku === 'SKU-8821' ? 12 : item.sku === 'SKU-4102' ? 5 : 8),
-            leadTime: item.leadTime || (item.sku === 'SKU-8821' ? 7 : item.sku === 'SKU-4102' ? 5 : 6),
-            safetyStock: item.safetyStock || (item.sku === 'SKU-8821' ? 20 : item.sku === 'SKU-4102' ? 10 : 15),
-            unitPrice: item.unitPrice || (item.sku === 'SKU-8821' ? 14500 : 8200),
-            supplier: item.supplier || 'PowerTech Energy Solutions Corp.'
-          }));
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    setInventoryList(invParsed);
-    if (invParsed.length > 0) {
-      if (!selectedSku || !invParsed.some(i => i.sku === selectedSku)) {
-        setSelectedSku(invParsed[0].sku);
-      }
-    } else {
-      setSelectedSku('');
-    }
-  }, []);
-
   const currentItem = (Array.isArray(inventoryList) && inventoryList.length > 0)
     ? (inventoryList.find(i => i && i.sku === selectedSku) || inventoryList[0])
     : null;
 
-  // Real product-specific calculations safely handled
-  const dailyUsage = Number(currentItem?.dailyUsage) || 12;
-  const leadTime = Number(currentItem?.leadTime) || 7;
-  const safetyStock = Number(currentItem?.safetyStock) || 20;
-  const computedROP = (dailyUsage * leadTime) + safetyStock; 
+  // Reorder point = (daily demand x lead time) + safety stock
+  const planning = currentItem ? getPlanning(currentItem) : { dailyUsage: 0, leadTime: 0, safetyStock: 0, reorderPoint: 0 };
+  const { dailyUsage, leadTime, safetyStock, reorderPoint: computedROP } = planning;
   const onHand = Number(currentItem?.onHand) || 0;
   const isBelowROP = onHand <= computedROP;
-  const suggestedOrderQty = Math.max(computedROP * 2 - onHand, 150);
-  const unitPrice = Number(currentItem?.unitPrice) || 14500;
+  // Order up to one extra lead-time cycle of demand above the reorder point
+  const maxStockLevel = computedROP + Math.ceil(dailyUsage * leadTime);
+  const suggestedOrderQty = Math.max(maxStockLevel - onHand, 1);
+  const unitPrice = parsePrice(currentItem?.price);
   const totalEstimatedCost = suggestedOrderQty * unitPrice;
+  const itemClass = currentItem ? abcMap[currentItem.sku]?.class || 'C' : 'C';
+  const [today] = useState(() => new Date());
+  const deliveryDate = new Date(today.getTime() + leadTime * 24 * 60 * 60 * 1000);
+  const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   // Pagination state (Showing 5 per page)
   const [currentPage, setCurrentPage] = useState(1);
@@ -237,31 +207,32 @@ export default function ReorderPlanner() {
                   {/* LEFT COLUMN: SALES TREND ANALYSIS */}
                   <div className="lg:col-span-6 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
                     <h2 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-3">
-                      SALES TREND ANALYSIS ({currentItem.sku})
+                      DEMAND ANALYSIS ({currentItem.sku})
                     </h2>
 
                     <div className="space-y-3">
                       <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">30-DAY VELOCITY ANALYSIS</p>
-                        <p className="text-sm font-black text-slate-900 mt-1">Average Daily Consumption: <span className="text-emerald-700">{dailyUsage} Units / Day</span></p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">DEMAND</p>
+                        <p className="text-sm font-black text-slate-900 mt-1">Average Daily Demand: <span className="text-emerald-700">{dailyUsage} Units / Day</span></p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
                         <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">PEAK SALES DEMAND</p>
-                          <p className="text-sm font-black text-slate-900 mt-1">{dailyUsage * 2 + 4} Units / Day</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">SUPPLIER LEAD TIME</p>
+                          <p className="text-sm font-black text-slate-900 mt-1">{leadTime} Days</p>
                         </div>
 
                         <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">SUPPLIER LEAD TIME</p>
-                          <p className="text-sm font-black text-slate-900 mt-1">{leadTime} Business Days</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">SAFETY STOCK</p>
+                          <p className="text-sm font-black text-slate-900 mt-1">{safetyStock} Units</p>
                         </div>
                       </div>
 
                       <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">HISTORICAL TREND PROJECTION</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ABC CLASS &amp; AVAILABILITY</p>
                         <p className="text-xs text-slate-700 font-medium leading-relaxed mt-1">
-                          Demand projected to increase by <span className="font-bold text-slate-900">15%</span> due to seasonal outage spikes.
+                          <span className={`inline-block border font-black px-2 py-0.5 rounded-full text-[10px] mr-2 ${abcBadge(itemClass)}`}>Class {itemClass}</span>
+                          {Math.round((abcMap[currentItem.sku]?.share || 0) * 100)}% of yearly usage value. {onHand} on hand, {Number(currentItem.reserved) || 0} allocated, <span className="font-bold text-slate-900">{getATP(currentItem)} available to promise</span>.
                         </p>
                       </div>
                     </div>
@@ -276,20 +247,20 @@ export default function ReorderPlanner() {
                     <div className="space-y-3">
                       <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">RECOMMENDED REPLENISHMENT ORDER</p>
-                        <p className="text-sm font-black text-slate-900 mt-1">Suggested Order Quantity: <span className="text-emerald-700">{suggestedOrderQty} Units</span> <span className="text-[11px] font-normal text-slate-500">(Max Stock Target)</span></p>
+                        <p className="text-sm font-black text-slate-900 mt-1">Suggested Order Quantity: <span className="text-emerald-700">{suggestedOrderQty} Units</span> <span className="text-[11px] font-normal text-slate-500">(up to max level of {maxStockLevel})</span></p>
                       </div>
 
                       <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">PRIMARY SUPPLIER DETAILS</p>
                         <p className="text-sm font-black text-slate-900 mt-1">{currentItem.supplier || 'PowerTech Energy Solutions Corp.'}</p>
                         <p className="text-xs font-bold text-slate-600 mt-0.5">
-                          Unit Price: ₱{unitPrice.toLocaleString()}.00 | Total Estimated Cost: <span className="text-slate-900 font-mono">₱{totalEstimatedCost.toLocaleString()}.00</span>
+                          Unit Price: {formatPeso(unitPrice)} | Total Estimated Cost: <span className="text-slate-900 font-mono">{formatPeso(totalEstimatedCost)}</span>
                         </p>
                       </div>
 
                       <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ESTIMATED FULFILLMENT WINDOW</p>
-                        <p className="text-xs font-bold text-slate-800 mt-1">Order Date: Aug 22, 2026 — Estimated Delivery: Aug 29, 2026</p>
+                        <p className="text-xs font-bold text-slate-800 mt-1">Order Date: {fmt(today)} — Estimated Delivery: {fmt(deliveryDate)}</p>
                       </div>
                     </div>
                   </div>
