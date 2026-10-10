@@ -23,11 +23,11 @@ const TONES = {
 };
 
 const PRIORITY_BADGE = {
-  Critical: 'bg-rose-50 text-rose-700 ring-rose-200',
+  Critical: 'bg-rose-600 text-white ring-rose-600',
   Warning: 'bg-amber-50 text-amber-700 ring-amber-200',
-  Pending: 'bg-sky-50 text-sky-700 ring-sky-200',
+  Pending: 'bg-rose-50 text-rose-700 ring-rose-200',
 };
-const PRIORITY_DOT = { Critical: 'bg-rose-500', Warning: 'bg-amber-500', Pending: 'bg-sky-500' };
+const PRIORITY_DOT = { Critical: 'bg-rose-600', Warning: 'bg-amber-500', Pending: 'bg-rose-400' };
 
 function KpiCard({ label, value, hint, icon: Icon, tone }) {
   const t = TONES[tone];
