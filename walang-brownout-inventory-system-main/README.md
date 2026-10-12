@@ -1,16 +1,24 @@
-# React + Vite
+# Walang Brownout Inventory System (Frontend)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + Vite + Tailwind. Talks to the Laravel backend through `VITE_API_URL`.
 
-Currently, two official plugins are available:
+## Features (mapped to the project rubric)
+| Rubric criterion | Where |
+|---|---|
+| Problem analysis (seasonal stockouts, overstock, discrepancies, filter expiry) | `ReorderPlanner`, `Alerts`, `FifoBacktracking` |
+| Reliability / tested | `tests/inventory.test.js` (`npm test`) |
+| Inventory data (item ID, category, batch, arrival date, physical, allocated, ATP) | `Inventory`, `ProductDetails`, `FifoBacktracking` |
+| Control logic (ABC, FIFO, expiry, reorder point = demand x lead time + safety stock) | `src/utils/inventory.js` |
+| Usability and code quality | shared `Navbar`/`Header`, one logic file, ESLint clean |
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Run locally
+```bash
+cp .env.example .env     # set VITE_API_URL
+npm install
+npm run dev              # http://localhost:5173
+npm test                 # unit tests for the inventory logic
+npm run build            # production build in dist/
+```
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Deploy
+See `RAILWAY_DEPLOYMENT_GUIDE.md`. `VITE_API_URL` is read at **build time**, so redeploy after changing it.
