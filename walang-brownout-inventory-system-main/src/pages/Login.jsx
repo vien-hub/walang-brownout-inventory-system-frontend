@@ -93,7 +93,6 @@ export default function Login() {
         <div className="login-powered">
           <span>Powered by</span>
           <strong>Walang Brownout</strong>
-            <img src="/logo-inventory.jpg" alt="Inventory Logo" />
         </div>
       </aside>
     

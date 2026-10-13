@@ -176,72 +176,76 @@ button, a, input, select {
   background: #eef3f6;
 }
 @media (min-width: 1024px) {
-  .login-page { grid-template-columns: 1fr 1fr; }
+  .login-page { grid-template-columns: 1.1fr 0.9fr; }
 }
 
-/* ---- Left hero ---- */
+/* ---- Left hero panel with warehouse photo & geometric overlays ---- */
 .login-hero {
   position: relative;
   display: none;
   overflow: hidden;
-  background:
-    linear-gradient(135deg, #f4f8fa 0%, #dbe7ee 100%);
+  background: #0a192f;
 }
 @media (min-width: 1024px) { .login-hero { display: block; } }
 
 .login-hero-photo {
   position: absolute;
   inset: 0;
-  /* Cleaner angle cut matching your reference */
-  clip-path: polygon(0 0, 100% 0, 100% 85%, 65% 100%, 0 100%);
+  /* Diagonal geometric split matching reference */
+  clip-path: polygon(0 0, 100% 0, 100% 88%, 55% 100%, 0 100%);
   background:
-    /* Lighter, glowing cyan-to-blue gradient overlay */
-    linear-gradient(135deg, rgba(14, 116, 144, 0.25), rgba(15, 23, 42, 0.45)),
+    linear-gradient(135deg, rgba(14, 116, 144, 0.3), rgba(10, 25, 47, 0.7)),
     var(--warehouse-img) center / cover no-repeat;
-  filter: brightness(1.1) contrast(1.05);
 }
+
 .login-hero-lines {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  pointer-events: none;
 }
 .login-hero-lines polyline {
   fill: none;
   stroke: #2fd0c0;
-  stroke-width: 4;
+  stroke-width: 3;
   vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 0 10px rgba(47, 208, 192, 0.9));
+  filter: drop-shadow(0 0 12px rgba(47, 208, 192, 0.9));
 }
+
 .login-dots {
   position: absolute;
   width: 110px;
   height: 110px;
-  background-image: radial-gradient(#0f3a63 2px, transparent 2.5px);
-  background-size: 18px 18px;
-  opacity: 0.7;
+  background-image: radial-gradient(#2fd0c0 2px, transparent 2.5px);
+  background-size: 16px 16px;
+  opacity: 0.6;
 }
 .login-dots-tl { top: 1.5rem; left: 1.5rem; }
 .login-dots-tr { top: 1.5rem; right: 3rem; background-image: radial-gradient(#ffffff 2px, transparent 2.5px); }
+
+/* ---- Clean text badge in bottom center/right of left panel ---- */
 .login-powered {
   position: absolute;
-  right: 4rem;
-  bottom: 3.5rem;
-  width: 7.5rem;
-  height: 7.5rem;
+  right: 6rem;
+  bottom: 4rem;
+  width: 8.5rem;
+  height: 8.5rem;
   border-radius: 999px;
-  background: #0f2a5a;
+  background: #0b1c38;
   color: #fff;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   line-height: 1.25;
-  box-shadow: 0 14px 30px -10px rgba(10, 30, 70, 0.7);
+  box-shadow: 0 16px 35px -10px rgba(8, 20, 40, 0.8);
+  border: 1px solid rgba(47, 208, 192, 0.2);
 }
-.login-powered strong { font-size: 0.8rem; font-weight: 600; }
+.login-powered span { color: #94a3b8; font-size: 0.68rem; }
+.login-powered strong { color: #ffffff; font-size: 0.78rem; font-weight: 600; }
 
 /* ---- Right panel + card ---- */
 .login-panel {
