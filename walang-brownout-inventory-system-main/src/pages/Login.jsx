@@ -95,7 +95,6 @@ export default function Login() {
           <strong>Walang Brownout</strong>
         </div>
       </aside>
-    
 
       {/* ===== Right: login card ===== */}
       <main className="login-panel">
