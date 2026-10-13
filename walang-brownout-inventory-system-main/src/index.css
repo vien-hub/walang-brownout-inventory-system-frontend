@@ -192,10 +192,13 @@ button, a, input, select {
 .login-hero-photo {
   position: absolute;
   inset: 0;
-  clip-path: polygon(17% 0, 100% 0, 100% 26%, 57% 100%, 0 100%, 0 62%);
+  /* Cleaner angle cut matching your reference */
+  clip-path: polygon(0 0, 100% 0, 100% 85%, 65% 100%, 0 100%);
   background:
-    linear-gradient(180deg, rgba(14, 52, 110, 0.55), rgba(10, 30, 70, 0.78)),
-    
+    /* Lighter, glowing cyan-to-blue gradient overlay */
+    linear-gradient(135deg, rgba(14, 116, 144, 0.25), rgba(15, 23, 42, 0.45)),
+    var(--warehouse-img) center / cover no-repeat;
+  filter: brightness(1.1) contrast(1.05);
 }
 .login-hero-lines {
   position: absolute;
