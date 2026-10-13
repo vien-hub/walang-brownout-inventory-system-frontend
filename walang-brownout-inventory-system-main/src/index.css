@@ -32,7 +32,7 @@
   --glass: rgba(255, 255, 255, 0.78);
   --glass-border: rgba(255, 255, 255, 0.65);
   /* Swap this one line to use your own photo, e.g. url('/warehouse.jpg') */
-  --warehouse-img: url('/warehouse.svg');
+  --warehouse-img: url('/login.jpg');
 }
 
 html, body, #root {
