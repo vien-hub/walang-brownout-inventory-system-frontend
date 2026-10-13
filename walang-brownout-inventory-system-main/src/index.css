@@ -195,7 +195,7 @@ button, a, input, select {
   clip-path: polygon(17% 0, 100% 0, 100% 26%, 57% 100%, 0 100%, 0 62%);
   background:
     linear-gradient(180deg, rgba(14, 52, 110, 0.55), rgba(10, 30, 70, 0.78)),
-    var(--warehouse-img) center / cover no-repeat;
+    
 }
 .login-hero-lines {
   position: absolute;
