@@ -81,12 +81,22 @@ export default function Login() {
 
   return (
     <div className="login-page">
-      {/* ===== Left: warehouse photo with diagonal cut ===== */}
+      {/* ===== Left: full warehouse photo with geometric overlay ===== */}
       <aside className="login-hero" aria-hidden="true">
         <div className="login-hero-photo" />
-        <svg className="login-hero-lines" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <polyline points="17,0 0,62" />
-          <polyline points="100,26 57,100" />
+        {/* Geometric diagonal lines matching the screenshot */}
+        <svg className="login-hero-lines" viewBox="0 0 500 700" preserveAspectRatio="none">
+          {/* White diagonal lines */}
+          <line x1="80" y1="0" x2="0" y2="380" strokeWidth="1.5" stroke="rgba(255,255,255,0.45)" />
+          <line x1="160" y1="0" x2="40" y2="700" strokeWidth="1" stroke="rgba(255,255,255,0.25)" />
+          <line x1="500" y1="120" x2="290" y2="700" strokeWidth="1.5" stroke="rgba(255,255,255,0.40)" />
+          <line x1="500" y1="220" x2="380" y2="700" strokeWidth="1" stroke="rgba(255,255,255,0.20)" />
+          {/* Teal accent lines */}
+          <line x1="110" y1="0" x2="0" y2="480" className="teal-line" strokeWidth="2" />
+          <line x1="500" y1="160" x2="340" y2="700" className="teal-line" strokeWidth="1.5" />
+          {/* Diagonal polygon shapes */}
+          <polygon points="0,0 90,0 0,150" fill="rgba(255,255,255,0.06)" />
+          <polygon points="500,500 500,700 300,700" fill="rgba(255,255,255,0.05)" />
         </svg>
         <div className="login-dots login-dots-tl" />
         <div className="login-dots login-dots-tr" />
