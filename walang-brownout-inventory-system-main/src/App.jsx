@@ -10,6 +10,7 @@ import ReorderPlanner from "./pages/ReorderPlanner.jsx";
 import UserManagement from "./pages/UserManagement.jsx";
 import TransactionRecords from "./pages/TransactionRecords.jsx";
 import FifoBacktracking from "./pages/FifoBacktracking.jsx";
+import Orders from "./pages/Orders.jsx";
 
 // Protected Route Guard
 function ProtectedRoute({ children }) {
@@ -36,6 +37,8 @@ export default function App() {
         <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
         <Route path="/transaction-records" element={<ProtectedRoute><TransactionRecords /></ProtectedRoute>} />
         <Route path="/fifo-backtracking" element={<ProtectedRoute><FifoBacktracking /></ProtectedRoute>} />
+        {/* Administrator + Inventory Manager only (Orders.jsx also redirects other roles) */}
+        <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
 
         {/* Fallback Redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -92,8 +92,15 @@ export default function ReorderPlanner() {
       return;
     }
 
+    // Unique PO number (re-roll until it does not match an existing order)
+    let poId;
+    do {
+      poId = `PO-2026-${String(Math.floor(1000 + Math.random() * 9000))}`;
+    } while (purchaseOrders.some((po) => po.id === poId));
+
     const newPO = {
-      id: `PO-2026-00${Math.floor(10 + Math.random() * 90)}`,
+      id: poId,
+      sku: currentItem.sku,
       item: currentItem.name,
       qty: suggestedOrderQty,
       supplier: currentItem.supplier || 'PowerTech Energy Solutions Corp.',
@@ -375,9 +382,10 @@ export default function ReorderPlanner() {
                       <td className="py-3.5 px-4 font-mono text-slate-500">{po.date}</td>
                       <td className="py-3.5 px-4 text-center">
                         <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black border ${
-                          po.status === 'Completed' 
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
-                            : 'bg-amber-50 text-amber-800 border-amber-300'
+                          po.status === 'Completed' ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                          : po.status === 'Approved' ? 'bg-sky-50 text-sky-800 border-sky-300'
+                          : po.status === 'Declined' ? 'bg-rose-50 text-rose-800 border-rose-300'
+                          : 'bg-amber-50 text-amber-800 border-amber-300'
                         }`}>
                           {po.status}
                         </span>
