@@ -5,6 +5,7 @@ import {
   RefreshCw,
   Layers,
   ClipboardList,
+  ClipboardCheck,
   BarChart3,
   Bell,
   Users,
@@ -15,12 +16,16 @@ import api from '../api/axios';
 import { clearSession } from '../api/sync';
 import { getCurrentUser, getInventory, getStatus } from '../utils/inventory';
 
+// Roles that may see the Orders page (keep in sync with Orders.jsx)
+const ORDER_ROLES = ['Administrator', 'Inventory Manager'];
+
 // Every path here matches a route in App.jsx.
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/inventory', label: 'Inventory', icon: Package, also: ['/product-details'] },
   { path: '/fifo-backtracking', label: 'FIFO tracking', icon: RefreshCw },
   { path: '/reorder-planner', label: 'Reorder planner', icon: Layers },
+  { path: '/orders', label: 'Orders', icon: ClipboardCheck, roles: ORDER_ROLES },
   { path: '/transaction-records', label: 'Transactions', icon: ClipboardList },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/alerts', label: 'Alerts', icon: Bell },
@@ -98,7 +103,7 @@ export default function Navbar({ isOpen = false, onClose = () => {} }) {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
-          {NAV_ITEMS.map(({ path, label, icon: Icon, also = [] }) => {
+          {NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(user.role)).map(({ path, label, icon: Icon, also = [] }) => {
             const active = location.pathname === path || also.includes(location.pathname);
             return (
               <Link
