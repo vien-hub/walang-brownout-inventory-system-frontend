@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Eye, EyeOff, User, AlertCircle, CheckCircle2, X } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, UserPlus, User, AlertCircle, CheckCircle2, X, BellRing, Layers, BarChart3, ShieldCheck } from 'lucide-react';
 import api from '../api/axios';
 import { hydrateFromServer, startSession } from '../api/sync';
 
 const inputClass =
-  'w-full h-12 pl-12 pr-4 bg-white border-2 border-[#16293b] rounded-xl text-base text-slate-900 placeholder:text-slate-500 focus:outline-none focus:border-[#23808f] focus:ring-4 focus:ring-[#23808f]/20 transition';
-const iconClass = 'pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#23808f]';
+  'peer w-full h-12 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 hover:border-slate-300 focus:outline-none focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/15 transition';
+const iconClass =
+  'pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 peer-focus:text-teal-600 transition-colors';
+
+const highlights = [
+  { icon: BellRing, title: 'Real-time alerts', text: 'Low stock, expiry and reorder warnings as they happen.', delay: '0s' },
+  { icon: Layers, title: 'FIFO batch tracking', text: 'Always issue the oldest stock first.', delay: '-2s' },
+  { icon: BarChart3, title: 'ABC analysis', text: 'Focus on the items that matter most.', delay: '-4s' },
+];
 
 function getErrorMessage(err) {
   if (!err.response) return 'Cannot reach the server. Please check that the backend is running.';
@@ -74,181 +81,195 @@ export default function Login() {
   };
 
   return (
-    <div className="login-page min-h-screen font-sans text-slate-900 lg:grid lg:grid-cols-2">
-      {/* Left: photo band with diagonal shapes */}
-      <aside className="login-hero hidden lg:block">
-        <div className="login-photo" />
+    <div className="login-page min-h-screen font-sans text-slate-900 lg:grid lg:grid-cols-[1.1fr_1fr]">
+      {/* Left: brand panel */}
+      <aside className="login-hero relative hidden flex-col justify-between overflow-hidden p-12 text-white lg:flex">
+        <div className="login-grid" />
+        <span className="login-orb a" />
+        <span className="login-orb b" />
 
-        <svg className="login-art" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <defs>
-            <linearGradient id="lg-light" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#ffffff" stopOpacity="0.95" />
-              <stop offset="1" stopColor="#bcd3e6" stopOpacity="0.9" />
-            </linearGradient>
-            <linearGradient id="lg-teal" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#5eead4" />
-              <stop offset="1" stopColor="#0f9a9a" />
-            </linearGradient>
-          </defs>
-
-          {/* top-left pale triangles */}
-          <polygon points="0,0 33,0 0,61" fill="url(#lg-light)" />
-          <polygon points="0,0 19,0 0,34" fill="#ffffff" opacity="0.5" />
-          <polygon points="19,0 33,0 0,61 0,34" fill="#9fbdd6" opacity="0.28" />
-
-          {/* teal diagonal stripe */}
-          <polygon points="33,0 38,0 0,69 0,61" fill="url(#lg-teal)" opacity="0.92" />
-          <polygon points="38,0 41,0 0,74 0,69" fill="#5eead4" opacity="0.22" />
-
-          {/* bottom-right pale triangles */}
-          <polygon points="100,28 100,100 60,100" fill="url(#lg-light)" />
-          <polygon points="100,28 100,70 80,64" fill="#ffffff" opacity="0.5" />
-          <polygon points="100,70 100,100 74,100 80,64" fill="#9fbdd6" opacity="0.28" />
-
-          {/* thin diagonal lines */}
-          <g fill="none" strokeLinecap="round" vectorEffect="non-scaling-stroke">
-            <line x1="100" y1="28" x2="60" y2="100" stroke="#2dd4bf" strokeWidth="2" vectorEffect="non-scaling-stroke" opacity="0.8" />
-            <line x1="97" y1="38" x2="57" y2="110" stroke="#ffffff" strokeWidth="1" vectorEffect="non-scaling-stroke" opacity="0.7" />
-            <line x1="22" y1="0" x2="0" y2="40" stroke="#ffffff" strokeWidth="1" vectorEffect="non-scaling-stroke" opacity="0.8" />
-            <line x1="24" y1="22" x2="12" y2="52" stroke="#ffffff" strokeWidth="1" vectorEffect="non-scaling-stroke" opacity="0.5" />
-            <line x1="100" y1="18" x2="86" y2="44" stroke="#ffffff" strokeWidth="1" vectorEffect="non-scaling-stroke" opacity="0.6" />
-          </g>
-        </svg>
-
-        {/* dot patterns */}
-        <span className="login-dots text-[#0f2a6b]" style={{ left: '1.5rem', top: '2rem', width: '4.5rem', height: '5.5rem' }} />
-        <span className="login-dots text-white/90" style={{ right: '2rem', top: '1.25rem', width: '5rem', height: '6.5rem' }} />
-
-        {/* Powered by */}
-        <div className="absolute bottom-[10%] right-[12%] flex h-32 w-32 items-center justify-center rounded-full bg-[#10224a] text-center text-sm font-medium leading-snug text-white shadow-xl">
-          Powered by<br />Walang Brownout
+        <div className="relative flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20">
+            <img src="/logo-icon.png" alt="" className="h-7 w-7 object-contain" />
+          </div>
+          <div className="leading-tight">
+            <p className="text-base font-semibold">Walang Brownout</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-sky-200/80">Inventory System</p>
+          </div>
         </div>
+
+        <div className="relative max-w-lg space-y-8">
+          <div className="space-y-4">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-teal-100 ring-1 ring-white/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-300" />
+              Smart warehouse control
+            </span>
+            <h1 className="text-5xl font-extrabold leading-[1.1] tracking-tight">
+              Keep your stock <span className="bg-linear-to-r from-teal-300 to-sky-300 bg-clip-text text-transparent">powered</span>, even when the lights go out.
+            </h1>
+            <p className="text-sm leading-relaxed text-sky-100/80">
+              Monitor inventory, forecast demand and act on alerts, all in one place.
+            </p>
+          </div>
+
+          <ul className="space-y-3">
+            {highlights.map(({ icon: Icon, title, text, delay }, i) => (
+              <li
+                key={title}
+                className="login-glass flex items-center gap-4 rounded-2xl p-4"
+                style={{ animationDelay: delay, marginLeft: `${i * 28}px` }}
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-teal-400/80 to-sky-500/80">
+                  <Icon className="h-5 w-5 text-white" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold">{title}</p>
+                  <p className="text-xs text-sky-100/75">{text}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="relative flex items-center gap-2 text-xs text-sky-100/70">
+          <ShieldCheck className="h-4 w-4" />
+          Secure, role-based access for your team
+        </p>
       </aside>
 
       {/* Right: form */}
-      <main className="login-form-side flex min-h-screen items-center justify-center p-6 sm:p-10">
-        <div className="login-frame">
-          <div className="login-card">
-            <div className="login-badge flex items-center justify-center gap-3 rounded-xl px-5 py-4">
-              <img src="/logo-icon.png" alt="" className="h-10 w-10 object-contain" />
-              <div className="leading-tight">
-                <p className="text-lg font-medium text-slate-100">Walang Brownout</p>
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-300">Inventory System</p>
-              </div>
+      <main className="login-form-side flex min-h-screen items-center justify-center p-6 sm:p-10 lg:min-h-0">
+        <div className="login-card w-full max-w-md">
+          <div className="mb-7 flex items-center gap-3 lg:hidden">
+            <img src="/logo-icon.png" alt="" className="h-10 w-10 object-contain" />
+            <div className="leading-tight">
+              <p className="text-base font-semibold">Walang Brownout</p>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Inventory System</p>
             </div>
+          </div>
 
-            <h2 className="mt-7 text-center text-2xl font-medium tracking-tight text-slate-800">
-              {isSignUp ? 'Create your account' : 'Log in to your account'}
-            </h2>
+          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">
+            {isSignUp ? 'Create your account' : 'Welcome back'}
+          </h2>
+          <p className="mt-1.5 text-sm text-slate-500">
+            {isSignUp ? 'Register a new staff account to get started.' : 'Log in to your account to continue.'}
+          </p>
 
-            {errorMessage && (
-              <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-medium text-rose-800">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
-                <span>{errorMessage}</span>
-              </div>
-            )}
+          {errorMessage && (
+            <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-medium text-rose-800">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
 
-            {successMessage && (
-              <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                <span>{successMessage}</span>
-              </div>
-            )}
+          {successMessage && (
+            <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <span>{successMessage}</span>
+            </div>
+          )}
 
-            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-              {isSignUp && (
-                <div className="space-y-1.5">
-                  <label htmlFor="fullName" className="text-base text-slate-900">Full name</label>
-                  <div className="relative">
-                    <User className={iconClass} />
-                    <input
-                      id="fullName"
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Full name"
-                      className={inputClass}
-                    />
-                  </div>
-                </div>
-              )}
-
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            {isSignUp && (
               <div className="space-y-1.5">
-                <label htmlFor="email" className="text-base text-slate-900">Email address</label>
+                <label htmlFor="fullName" className="text-sm font-semibold text-slate-700">Full name</label>
                 <div className="relative">
-                  <User className={iconClass} />
                   <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Email address"
-                    autoComplete="email"
+                    id="fullName"
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g., Alie Smith"
                     className={inputClass}
                   />
+                  <User className={iconClass} />
                 </div>
               </div>
+            )}
 
-              <div className="space-y-1.5">
-                <label htmlFor="password" className="text-base text-slate-900">Password</label>
-                <div className="relative">
-                  <Lock className={iconClass} />
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Password"
-                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                    className={`${inputClass} pr-12`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-slate-400 hover:text-slate-700"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {isSignUp && <p className="text-xs text-slate-500">At least 6 characters.</p>}
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="text-sm font-semibold text-slate-700">Email address</label>
+              <div className="relative">
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  className={inputClass}
+                />
+                <Mail className={iconClass} />
               </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#23808f] text-lg font-medium text-white shadow-md hover:bg-[#1c6a77] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {loading && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
-                <span>{loading ? 'Please wait...' : isSignUp ? 'Create account' : 'Log In'}</span>
-              </button>
-            </form>
-
-            <div className="mt-5 space-y-3 text-base">
-              {!isSignUp && (
-                <button
-                  type="button"
-                  onClick={() => setShowForgot(true)}
-                  className="block cursor-pointer text-slate-900 hover:text-[#23808f] hover:underline"
-                >
-                  Forgot password?
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={switchMode}
-                className="block cursor-pointer text-slate-900 hover:text-[#23808f] hover:underline"
-              >
-                {isSignUp ? 'Already have an account? Log in' : 'Create an account'}
-              </button>
             </div>
 
-            {isSignUp && (
-              <p className="mt-4 text-xs text-slate-500">
-                New accounts start as Warehouse Staff. An Administrator can change roles in User Management.
-              </p>
-            )}
-          </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="text-sm font-semibold text-slate-700">Password</label>
+                {!isSignUp && (
+                  <button
+                    type="button"
+                    onClick={() => setShowForgot(true)}
+                    className="cursor-pointer text-xs font-semibold text-teal-700 hover:text-teal-900 hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                  className={`${inputClass} pr-12`}
+                />
+                <Lock className={iconClass} />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-slate-400 hover:text-slate-700"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {isSignUp && <p className="text-xs text-slate-500">At least 6 characters.</p>}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="login-btn group flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl text-sm font-bold text-white transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {loading ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              ) : isSignUp ? (
+                <UserPlus className="h-4 w-4" />
+              ) : null}
+              <span>{loading ? 'Please wait...' : isSignUp ? 'Create account' : 'Log In'}</span>
+              {!loading && !isSignUp && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-slate-500">
+            {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button
+              type="button"
+              onClick={switchMode}
+              className="cursor-pointer font-bold text-teal-700 hover:text-teal-900 hover:underline"
+            >
+              {isSignUp ? 'Log in' : 'Create an account'}
+            </button>
+          </p>
+
+          {isSignUp && (
+            <p className="mt-3 text-center text-xs text-slate-400">
+              New accounts start as Warehouse Staff. An Administrator can change roles in User Management.
+            </p>
+          )}
         </div>
       </main>
 
