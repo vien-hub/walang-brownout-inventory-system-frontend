@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import Header from '../components/Header.jsx';
 import Navbar from '../components/Navbar.jsx';
-import { Search, Eye, ShieldAlert, X, Lock } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Search, Eye, ShieldAlert, X, Lock, ExternalLink } from 'lucide-react';
 import { getCurrentUser, loadAlerts } from '../utils/inventory.js';
 
 export default function Alerts() {
@@ -32,8 +33,17 @@ export default function Alerts() {
   const [selectedType, setSelectedType] = useState('');
   const [selectedPriority, setSelectedPriority] = useState('');
 
-  // View Modal State
-  const [activeAlert, setActiveAlert] = useState(null);
+  // View Modal State. It opens from the View button, or from the notification
+  // bell, which links here with ?open=<alert id>.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [viewedId, setViewedId] = useState(null);
+  const openId = searchParams.get('open');
+  const activeAlert = alerts.find((a) => a.id === (viewedId ?? openId)) || null;
+
+  const closeAlert = () => {
+    setViewedId(null);
+    if (openId) setSearchParams({}, { replace: true });
+  };
 
   const filteredAlerts = useMemo(() => {
     return alerts.filter(alt => {
@@ -58,10 +68,6 @@ export default function Alerts() {
 
     const updated = alerts.map(a => a.id === alertId ? { ...a, status: newStatus } : a);
     setAlerts(updated);
-
-    if (activeAlert) {
-      setActiveAlert(prev => ({ ...prev, status: newStatus }));
-    }
   };
 
   // Priority: Critical = solid red, Warning = yellow, Pending = light red
@@ -197,7 +203,7 @@ export default function Alerts() {
                       <td className="py-4 px-4 text-xs text-slate-600 whitespace-nowrap">{alt.timestamp}</td>
                       <td className="py-3.5 px-4 text-center">
                         <button 
-                          onClick={() => setActiveAlert(alt)}
+                          onClick={() => setViewedId(alt.id)}
                           className="inline-flex items-center space-x-1 bg-slate-100 hover:bg-sky-100 text-slate-800 hover:text-sky-800 font-bold px-3.5 py-2 rounded-xl border border-slate-200 transition text-xs cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5" />
@@ -229,7 +235,7 @@ export default function Alerts() {
                 <ShieldAlert className="w-5 h-5 text-sky-600" />
                 <h3 className="text-base font-black text-slate-900">Alert Details ({activeAlert.id})</h3>
               </div>
-              <button onClick={() => setActiveAlert(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+              <button onClick={closeAlert} className="text-slate-400 hover:text-slate-700 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -265,9 +271,16 @@ export default function Alerts() {
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
+                <Link
+                  to={`/product-details?sku=${activeAlert.sku}`}
+                  className="inline-flex items-center space-x-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold rounded-xl transition"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>View Product</span>
+                </Link>
                 <button 
                   type="button" 
-                  onClick={() => setActiveAlert(null)} 
+                  onClick={closeAlert} 
                   className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-extrabold rounded-xl transition cursor-pointer"
                 >
                   Close

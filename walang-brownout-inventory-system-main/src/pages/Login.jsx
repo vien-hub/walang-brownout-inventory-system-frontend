@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, User, AlertCircle, CheckCircle2, Shield, Package, TrendingUp } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, UserPlus, User, AlertCircle, CheckCircle2, X, BellRing, Layers, BarChart3, ShieldCheck } from 'lucide-react';
 import api from '../api/axios';
 import { hydrateFromServer, startSession } from '../api/sync';
 
 const inputClass =
-  'w-full h-12 pl-11 pr-4 bg-white border border-slate-200 rounded-2xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/15 transition';
+  'peer w-full h-12 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 hover:border-slate-300 focus:outline-none focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/15 transition';
+const iconClass =
+  'pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 peer-focus:text-teal-600 transition-colors';
 
-const features = [
-  { icon: Package, title: 'Live stock monitoring', text: 'Track every SKU and get alerts before items run out.' },
-  { icon: TrendingUp, title: 'Demand forecasting', text: 'Plan reorders using seasonal demand and sales trends.' },
-  { icon: Shield, title: 'Role-based access', text: 'Administrators, managers and staff each see what they need.' },
+const highlights = [
+  { icon: BellRing, title: 'Real-time alerts', text: 'Low stock, expiry and reorder warnings as they happen.', delay: '0s' },
+  { icon: Layers, title: 'FIFO batch tracking', text: 'Always issue the oldest stock first.', delay: '-2s' },
+  { icon: BarChart3, title: 'ABC analysis', text: 'Focus on the items that matter most.', delay: '-4s' },
 ];
 
 function getErrorMessage(err) {
@@ -30,6 +32,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [showForgot, setShowForgot] = useState(false);
 
   // Already logged in? Go straight to the dashboard.
   useEffect(() => {
@@ -78,156 +81,234 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 font-sans text-slate-900">
-      {/* Brand panel */}
-      <aside className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-linear-to-br from-[#0b1620] via-[#12222f] to-[#0f2c36] p-12 text-white">
-        <div className="absolute -top-24 -right-24 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -bottom-32 -left-20 h-96 w-96 rounded-full bg-cyan-400/15 blur-3xl" />
+    <div className="login-page min-h-screen font-sans text-slate-900 lg:grid lg:grid-cols-[1.1fr_1fr]">
+      {/* Left: brand panel */}
+      <aside className="login-hero relative hidden flex-col justify-between overflow-hidden p-12 text-white lg:flex">
+        <div className="login-grid" />
+        <span className="login-orb a" />
+        <span className="login-orb b" />
 
-        <div className="relative inline-flex self-start rounded-3xl bg-white/95 px-5 py-3 shadow-2xl shadow-sky-950/30">
-          <img src="/logo.png" alt="WalangBrownout Inventory System" className="h-14 w-auto" />
+        <div className="relative flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20">
+            <img src="/logo-icon.png" alt="" className="h-7 w-7 object-contain" />
+          </div>
+          <div className="leading-tight">
+            <p className="text-base font-semibold">Walang Brownout</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-sky-200/80">Inventory System</p>
+          </div>
         </div>
 
-        <div className="relative space-y-8 max-w-md">
-          <div className="space-y-3">
-            <h1 className="text-4xl font-extrabold tracking-tight leading-tight">
-              Keep your inventory powered, even when the lights go out.
+        <div className="relative max-w-lg space-y-8">
+          <div className="space-y-4">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-teal-100 ring-1 ring-white/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-300" />
+              Smart warehouse control
+            </span>
+            <h1 className="text-5xl font-extrabold leading-[1.1] tracking-tight">
+              Keep your stock <span className="bg-linear-to-r from-teal-300 to-sky-300 bg-clip-text text-transparent">powered</span>, even when the lights go out.
             </h1>
-            <p className="text-sky-100 text-sm leading-relaxed">
-              Monitor stocks, forecast demand, and manage backorders with real-time tracking.
+            <p className="text-sm leading-relaxed text-sky-100/80">
+              Monitor inventory, forecast demand and act on alerts, all in one place.
             </p>
           </div>
 
-          <ul className="space-y-4">
-            {features.map(({ icon: Icon, title, text }) => (
-              <li key={title} className="flex items-start gap-3">
-                <div className="mt-0.5 p-2 rounded-xl bg-white/15 border border-white/20">
-                  <Icon className="w-4 h-4" />
-                </div>
+          <ul className="space-y-3">
+            {highlights.map(({ icon: Icon, title, text, delay }, i) => (
+              <li
+                key={title}
+                className="login-glass flex items-center gap-4 rounded-2xl p-4"
+                style={{ animationDelay: delay, marginLeft: `${i * 28}px` }}
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-teal-400/80 to-sky-500/80">
+                  <Icon className="h-5 w-5 text-white" />
+                </span>
                 <div>
-                  <p className="text-sm font-bold">{title}</p>
-                  <p className="text-xs text-sky-100/90">{text}</p>
+                  <p className="text-sm font-semibold">{title}</p>
+                  <p className="text-xs text-sky-100/75">{text}</p>
                 </div>
               </li>
             ))}
           </ul>
         </div>
 
-        <p className="relative text-xs text-sky-100/80">Inventory Management System</p>
+        <p className="relative flex items-center gap-2 text-xs text-sky-100/70">
+          <ShieldCheck className="h-4 w-4" />
+          Secure, role-based access for your team
+        </p>
       </aside>
 
-      {/* Form panel */}
-      <main className="flex items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-md space-y-7">
-          <div className="lg:hidden">
-            <img src="/logo.png" alt="WalangBrownout Inventory System" className="h-14 w-auto" />
+      {/* Right: form */}
+      <main className="login-form-side flex min-h-screen items-center justify-center p-6 sm:p-10 lg:min-h-0">
+        <div className="login-card w-full max-w-md">
+          <div className="mb-7 flex items-center gap-3 lg:hidden">
+            <img src="/logo-icon.png" alt="" className="h-10 w-10 object-contain" />
+            <div className="leading-tight">
+              <p className="text-base font-semibold">Walang Brownout</p>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Inventory System</p>
+            </div>
           </div>
 
-          <div>
-            <h2 className="text-3xl font-extrabold tracking-tight">{isSignUp ? 'Create account' : 'Welcome back'}</h2>
-            <p className="text-sm text-slate-500 mt-1.5">
-              {isSignUp ? 'Register a new staff account to get started.' : 'Please log in to access your dashboard.'}
-            </p>
-          </div>
+          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">
+            {isSignUp ? 'Create your account' : 'Welcome back'}
+          </h2>
+          <p className="mt-1.5 text-sm text-slate-500">
+            {isSignUp ? 'Register a new staff account to get started.' : 'Log in to your account to continue.'}
+          </p>
 
           {errorMessage && (
-            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-rose-800 text-sm font-medium">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-medium text-rose-800">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {successMessage && (
-            <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-2.5 text-emerald-800 text-sm font-medium">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
               <span>{successMessage}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             {isSignUp && (
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Full name</label>
+                <label htmlFor="fullName" className="text-sm font-semibold text-slate-700">Full name</label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
                   <input
+                    id="fullName"
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="e.g., Alie Smith"
                     className={inputClass}
                   />
+                  <User className={iconClass} />
                 </div>
               </div>
             )}
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Email address</label>
+              <label htmlFor="email" className="text-sm font-semibold text-slate-700">Email address</label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
                 <input
+                  id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
+                  autoComplete="email"
                   className={inputClass}
                 />
+                <Mail className={iconClass} />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Password</label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="text-sm font-semibold text-slate-700">Password</label>
+                {!isSignUp && (
+                  <button
+                    type="button"
+                    onClick={() => setShowForgot(true)}
+                    className="cursor-pointer text-xs font-semibold text-teal-700 hover:text-teal-900 hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
                 <input
+                  id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
+                  placeholder="Enter your password"
+                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
                   className={`${inputClass} pr-12`}
                 />
+                <Lock className={iconClass} />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-slate-400 hover:text-slate-700"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {isSignUp && <p className="text-xs text-slate-400">At least 6 characters.</p>}
+              {isSignUp && <p className="text-xs text-slate-500">At least 6 characters.</p>}
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-12 mt-2 bg-linear-to-r from-sky-600 to-sky-800 hover:from-sky-700 hover:to-sky-900 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold text-sm rounded-2xl shadow-lg shadow-sky-700/25 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+              className="login-btn group flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl text-sm font-bold text-white transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {loading ? (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
               ) : isSignUp ? (
-                <UserPlus className="w-4 h-4" />
-              ) : (
-                <LogIn className="w-4 h-4" />
-              )}
-              <span>{loading ? 'Please wait...' : isSignUp ? 'Create account' : 'Log in'}</span>
+                <UserPlus className="h-4 w-4" />
+              ) : null}
+              <span>{loading ? 'Please wait...' : isSignUp ? 'Create account' : 'Log In'}</span>
+              {!loading && !isSignUp && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
             </button>
           </form>
 
-          <p className="text-center text-sm text-slate-500">
+          <p className="mt-6 text-center text-sm text-slate-500">
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-            <button type="button" onClick={switchMode} className="font-bold text-sky-700 hover:text-sky-900 cursor-pointer">
-              {isSignUp ? 'Log in' : 'Register new account'}
+            <button
+              type="button"
+              onClick={switchMode}
+              className="cursor-pointer font-bold text-teal-700 hover:text-teal-900 hover:underline"
+            >
+              {isSignUp ? 'Log in' : 'Create an account'}
             </button>
           </p>
 
           {isSignUp && (
-            <p className="text-xs text-slate-400 text-center">
+            <p className="mt-3 text-center text-xs text-slate-400">
               New accounts start as Warehouse Staff. An Administrator can change roles in User Management.
             </p>
           )}
         </div>
       </main>
+
+      {/* Forgot password */}
+      {showForgot && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          onClick={() => setShowForgot(false)}
+        >
+          <div
+            className="w-full max-w-sm space-y-3 rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900">Forgot your password?</h3>
+              <button
+                type="button"
+                onClick={() => setShowForgot(false)}
+                className="cursor-pointer text-slate-400 hover:text-slate-700"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm leading-relaxed text-slate-600">
+              Passwords are reset by an Administrator. Ask your Administrator to open
+              <span className="font-semibold text-slate-800"> Users </span>
+              in the menu, edit your account and enter a new password. Then log in with it here.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowForgot(false)}
+              className="h-10 w-full cursor-pointer rounded-lg bg-teal-600 text-sm font-semibold text-white hover:bg-teal-700"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
